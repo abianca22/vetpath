@@ -1,0 +1,95 @@
+.custom-button {
+    background-color: yellowgreen;
+    border-color: transparent;
+}
+
+.custom-button:hover {
+    background-color: greenyellow;
+    border-color: transparent;
+}
+
+.vet-bg {
+    background-color: yellowgreen;
+}
+
+.username-link {
+    text-decoration-line: none;
+    color: dimgrey;
+    padding: 0.5em;
+}
+
+p:has(.username-link) {
+    text-align: center;
+}
+
+
+input[disabled] {
+    border: none;
+    outline: none;
+    background-color: white;
+}
+
+input {
+    border-color: darkgray;
+}
+
+.selected {
+    border-bottom: 1px solid white;
+    color: white;
+}
+
+/* Ensure RSuite picker overlays appear above Bootstrap modals (Bootstrap modals use z-index ~1055) */
+.rs-picker-overlay,
+.rs-picker-layer,
+.rs-picker-menu,
+.rs-picker-panel,
+.rs-picker-datetime-dropdown,
+.rs-datepicker-panel,
+.rs-calendar,
+.rs-picker-popup-date,
+.rs-picker-popup,
+.rs-calendar-table {
+    z-index: 3000 !important;
+}
+
+
+.form-control:disabled {
+    background-color: white;
+    text-align: center;
+    cursor: unset;
+}
+
+.form-select:disabled {
+    background-color: white;
+    cursor: unset;
+    border: none;
+    background-image: none;
+}
+
+
+.rs-picker[data-disabled=true] {
+     cursor: unset !important;
+}
+
+.custom-picker[data-disabled=true] {
+    --rs-input-disabled-bg: #ffffff !important;
+    --rs-input-border-width: 0px !important;
+}
+
+.custom-picker[data-disabled=true] > .rs-input-group {
+    border: none;
+}
+
+.custom-picker[data-disabled=true] .rs-input {
+    color: black !important;
+    padding-left: 12px;
+}
+
+.custom-picker[data-disabled=true] span.rs-input-group-addon {
+    display: none;
+}
+
+a.no-decoration {
+    text-decoration: none;
+    color: black;
+}

@@ -1,0 +1,21 @@
+#kc-form-buttons input {
+    background-color: steelblue;
+    color: white;
+}
+
+div.card-pf {
+    margin-left: 25%;
+    margin-right: 25%;
+}
+
+body {
+    background-color: lightsteelblue !important;
+    background-image: none !important;
+}
+
+
+div #kc-header-wrapper {
+    font-family: "Times New Roman", Times, serif !important;
+    font-weight: bolder !important;
+    font-size: 24px !important;
+}

@@ -64,6 +64,7 @@ public class AppointmentService {
                 .clinic(clinic)
                 .slot(appointment.getSlot())
                 .status(AppointmentStatus.AVAILABLE)
+                .done(false)
                 .build();
         if (!validDateChecker(appointment.getSlot())) {
             throw new InvalidDataException("Nu se pot selecta date din trecut!");
@@ -72,8 +73,6 @@ public class AppointmentService {
             throw new InvalidDataException("Medicul veterinar nu apartine clinicii selectate!");
         }
         if (!checkIfSlotOverlaps(newAppointment)) {
-            System.out.println(newAppointment.getSlot());
-            System.out.println(checkIfSlotOverlaps(newAppointment));
             addedSlots.add(appointmentRepository.save(newAppointment));
         }
         else {
@@ -85,6 +84,7 @@ public class AppointmentService {
                     .clinic(clinic)
                     .slot(appointment.getSlot().plusMinutes(30L * i))
                     .status(AppointmentStatus.AVAILABLE)
+                    .done(false)
                     .build();
             if (getByVetAndSlotAndStatus(newAppointment.getVet(), newAppointment.getSlot(), AppointmentStatus.AVAILABLE).isEmpty()) {
                 addedSlots.add(appointmentRepository.save(newAppointment));

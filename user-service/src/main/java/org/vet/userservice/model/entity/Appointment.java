@@ -45,4 +45,6 @@ public class Appointment {
     private User cancelledBy;
 
     private String cancelReason;
+
+    private Boolean done = false;
 }

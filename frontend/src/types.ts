@@ -51,6 +51,7 @@ export interface AppointmentDTO {
     cancelReason: string | null;
     cancelledBy: UserDTO;
     status: string;
+    done: boolean;
 }
 
 export interface SlotDTO {

@@ -28,6 +28,8 @@ public class PetDTO {
     @NotNull(message = "Camp obligatoriu. Daca nu cunoasteti data nasterii, puteti introduce una aproximativa")
     private LocalDate birthDate;
 
+    private Double weight;
+
     private UserDTO owner;
 
     private String photoUrl;

@@ -38,4 +38,6 @@ public class AppointmentDTO {
     private UserDTO cancelledBy;
 
     private String cancelReason;
+
+    private Boolean done;
 }

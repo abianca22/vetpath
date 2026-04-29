@@ -36,7 +36,7 @@ export default function AddAppointmentForm(props) {
                 hour12: false
             } as const;
             const date = new Intl.DateTimeFormat('en-GB', options).format(new Date()).replaceAll('/', '.').replace(', ', ' ');
-            let availableSlots = await getSlots(auth.token, currentSelectedClinic.vets[0].username, date, null);
+            let availableSlots = await getSlots(auth.token, currentSelectedClinic.vets[0].username, false, date, null);
             availableSlots = availableSlots.filter(slot => slot.status.includes('AVAILABLE') && slot.clinic.id === clinicId);
             setSlots(availableSlots);
             if (availableSlots.length !== 0) {
@@ -61,7 +61,7 @@ export default function AddAppointmentForm(props) {
             hour12: false
         } as const;
         const date = new Intl.DateTimeFormat('en-GB', options).format(new Date()).replaceAll('/', '.').replace(', ', ' ');
-        let availableSlots = await getSlots(auth.token, vetUsername, date, null);
+        let availableSlots = await getSlots(auth.token, vetUsername, false, date, null);
         availableSlots = availableSlots.filter(slot => slot.status.includes('AVAILABLE') && slot.clinic.id === clinicId);
         setSlots(availableSlots);
         if (availableSlots.length !== 0) {

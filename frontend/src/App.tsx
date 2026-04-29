@@ -22,6 +22,7 @@ import Clinics from "./pages/ClinicsPage.tsx";
 import IndividualClinic from "./pages/IndividualClinicPage.tsx";
 import SlotsList from "./pages/SlotsListPage.tsx";
 import AppointmentsList from "./pages/AppointmentsListPage.tsx";
+import AppointmentDetails from "./pages/AppointmentDetailsPage.tsx";
 
 function App() {
     const auth = useContext(AuthContext);
@@ -51,6 +52,7 @@ function App() {
                         <Route path="/slots/:username" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
                         <Route path="/slots" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
                         <Route path="/appointments" element={<PrivateRoute element={AppointmentsList} roles={roles}/>} />
+                        <Route path="/appointments/details" element={<PrivateRoute element={AppointmentDetails} roles={roles}/>}/>
                     </Routes>
                 </BrowserRouter>
             </div>

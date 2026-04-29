@@ -375,9 +375,9 @@ export const leaveClinic = async(token, username, clinicId): Promise<ClinicDTO> 
     return await res.json();
 }
 
-export const getSlots = async(token, username, start = null, end = null): Promise<Array<AppointmentDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/appointments/${username}${
-        start && end ? `?startDate=${start}&endDate=${end}` : (start ? `?startDate=${start}` : (end ? `?endDate=${end}` : ''))
+export const getSlots = async(token, username, allSlots = true, start = null, end = null): Promise<Array<AppointmentDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/${username}?allSlots=${allSlots}${
+        start && end ? `&startDate=${start}&endDate=${end}` : (start ? `&startDate=${start}` : (end ? `&endDate=${end}` : ''))
     }`, {
             method: "GET",
             headers: {
@@ -485,6 +485,39 @@ export const cancelAppointment = async (token, user, slotId, recreateSlot = true
     });
 
     if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const getAppointment = async (token, id): Promise<AppointmentDTO> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/appointment/${id}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const changeAppointmentPet = async(token, id, petId): Promise<AppointmentDTO> => {
+    const body = {id: petId};
+    const res = await fetch(`http://localhost:8081/api/appointments/${id}/edit`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+    });
+
+    if(!res.ok) {
         throw new Error(await res.text());
     }
 

@@ -51,6 +51,18 @@ public class AppointmentController {
     @Autowired
     private ClinicService clinicService;
 
+    // Confirmare programare de catre medic:
+    // - se listeaza toate programarile medicului din trecut
+    // - confirma -> done = true
+    // Frontend:
+    // - in lista de programari, daca data e din trecut, apare confirmare programare (doar pentru medici)
+    // - daca medicul confirma programarea, se seteaza done = true
+
+    // - creare "rezumat" medical pentru o programare (doar pentru medici, dupa ce programarea a fost confirmata)
+    // - modificare astfel incat atunci cand se confirma din frontend programarea, sa se completeze si sa se trimita un formular cu date precum simptome, diagnostic, tratament. Daca nu sunt completate, tot se creeaza, dar campurile raman goale si "istoricul" o simple asociere cu programarea
+
+
+
     @PreAuthorize("hasRole('VETERINARIAN')")
     @PostMapping
     public ResponseEntity<?> addSlot(@RequestBody @Valid SlotDTO slotDTO, @AuthenticationPrincipal Jwt jwt) {
@@ -67,17 +79,31 @@ public class AppointmentController {
     }
 
     @GetMapping("/{username}")
-    public ResponseEntity<?> getSlotByVet(@PathVariable String username, @RequestParam(value="startDate", required = false) Optional<String> startDate, @RequestParam(value="endDate", required = false) Optional<String> endDate) {
+    public ResponseEntity<?> getSlotByVet(@PathVariable String username, @RequestParam(value="allSlots", required= true) Boolean allSlots, @RequestParam(value="startDate", required = false) Optional<String> startDate, @RequestParam(value="endDate", required = false) Optional<String> endDate) {
         List<Appointment> appointments = appointmentService.getByVet(userService.getUserByUsername(username));
-        if (startDate.isPresent()) {
-            List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
-            startDateComponents.addAll(Arrays.stream(startDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
-            appointments = appointments.stream().filter(appointment -> appointment.getSlot().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), startDateComponents.get(3), startDateComponents.get(4))) && !appointment.getStatus().equals(AppointmentStatus.BOOKED)).toList();
+        if (!allSlots) {
+            if (startDate.isPresent()) {
+                List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+                startDateComponents.addAll(Arrays.stream(startDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
+                appointments = appointments.stream().filter(appointment -> appointment.getSlot().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), startDateComponents.get(3), startDateComponents.get(4))) && !appointment.getStatus().equals(AppointmentStatus.BOOKED)).toList();
+            }
+            if (endDate.isPresent()) {
+                List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+                endDateComponents.addAll(Arrays.stream(endDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
+                appointments = appointments.stream().filter(appointment -> appointment.getSlot().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), endDateComponents.get(3), endDateComponents.get(4))) && !appointment.getStatus().equals(AppointmentStatus.BOOKED)).toList();
+            }
         }
-        if (endDate.isPresent()) {
-            List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
-            endDateComponents.addAll(Arrays.stream(endDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
-            appointments = appointments.stream().filter(appointment -> appointment.getSlot().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), endDateComponents.get(3), endDateComponents.get(4))) && !appointment.getStatus().equals(AppointmentStatus.BOOKED)).toList();
+        else {
+            if (startDate.isPresent()) {
+                List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+                startDateComponents.addAll(Arrays.stream(startDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
+                appointments = appointments.stream().filter(appointment -> appointment.getSlot().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), startDateComponents.get(3), startDateComponents.get(4)))).toList();
+            }
+            if (endDate.isPresent()) {
+                List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+                endDateComponents.addAll(Arrays.stream(endDate.get().split(" ")[1].split(":")).map(Integer::parseInt).toList());
+                appointments = appointments.stream().filter(appointment -> appointment.getSlot().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), endDateComponents.get(3), endDateComponents.get(4)))).toList();
+            }
         }
         return ResponseEntity.ok().body(appointments.stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
@@ -170,4 +196,26 @@ public class AppointmentController {
         return ResponseEntity.ok().body(appointmentService.getAppointments(dbpet, dbVet, startDate, endDate, status, dbCancelledBy, dbOwner, dbClinic).stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
 
+    @GetMapping("/appointment/{id}")
+    public ResponseEntity<?> getAppointment(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        Appointment appointment = appointmentService.getById(id);
+        if (!usefulFunctions.isAdmin(currentUser) && !appointment.getPet().getOwner().getId().equals(currentUser.getId()) && !appointment.getVet().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Doar administratorii si utilizatorii asociati programarii o pot vizualiza.");
+        }
+        return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointment));
+    }
+
+    @PutMapping("/{id}/edit")
+    public ResponseEntity<?> changeAppointmentPet(@PathVariable Integer id, @RequestBody PetDTO petDTO, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        Appointment appointment = appointmentService.getById(id);
+        if (!usefulFunctions.isAdmin(currentUser) && !currentUser.getId().equals(appointment.getPet().getOwner().getId())) {
+            throw new AccessDeniedException("Doar administratorii sau persoanele care au solicitat programarea pot modifica animalul de companie asociat.");
+        }
+        appointmentService.updateAppointmentPet(id, petDTO.getId());
+        Appointment updatedAppointment = appointmentService.getById(id);
+        System.out.println(updatedAppointment.getPet().getId());
+        return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(updatedAppointment));
+    }
 }

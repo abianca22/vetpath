@@ -4,6 +4,7 @@ import {Button, Col, Container, Row, Table} from "react-bootstrap";
 import {getAppointments} from "../api/api.ts";
 import AddAppointmentForm from "./AddAppointmentForm.tsx";
 import CancelAppointmentForm from "../components/CancelAppointmentForm.tsx";
+import {useNavigate} from "react-router-dom";
 
 
 export default function AppointmentsList() {
@@ -14,11 +15,11 @@ export default function AppointmentsList() {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelCloseCount, setCancelCloseCount] = useState(0);
     const [currentAppointment, setCurrentAppointment] = useState(null);
+    const navigate = useNavigate();
 
     // const [searchParams, setSearchParams] = useSearchParams();
     // const [data, setData] = useState([]);
     // const [edit, setEdit] = useState(null);
-    // const navigate = useNavigate();
 
 
     useEffect(() => {
@@ -87,56 +88,16 @@ export default function AppointmentsList() {
                                         <td>{app.clinic ? app.clinic.name : ''}</td>
                                         <td>{app.pet.name} ({app.pet.owner.username})</td>
                                         <td>{app.status.includes('BOOKED') ? 'Activa' : `Anulata de ${app.cancelledBy.username} ${app.cancelReason !== null && app.cancelReason !== '' ? ` (Motiv anulare: ${app.cancelReason})`: ''}`}</td>
-                                        <td>{(app.vet.id === auth.user.id || app.pet.owner.id === auth.user.id) && app.status.includes('BOOKED') && <Button variant="danger" onClick={() => {setCurrentAppointment(app); openCancelModal();}}>Anulare</Button>}</td>
+                                        <td>
+                                        <Button variant="success" onClick={() => {sessionStorage.setItem("appointmentId", app.id.toString()); navigate('/appointments/details');}}>Detalii</Button>
+                                            {(app.vet.id === auth.user.id || app.pet.owner.id === auth.user.id) && app.status.includes('BOOKED') && <Button variant="danger" className="m-1" onClick={() => {setCurrentAppointment(app); openCancelModal();}}>Anulare</Button>}
+                                        </td>
+
                                     </tr>
                                 )) : <tr>
                                     <td colSpan={4}>Nu exista rezultate</td>
                                 </tr>
                             }
-                            {/*{*/}
-                            {/*    data && data.length > 0 ? data.map(user => (*/}
-                            {/*        <tr key={user.username}>*/}
-                            {/*            <td>{user.username}</td>*/}
-                            {/*            <td>{*/}
-                            {/*                edit !== user.username ?*/}
-                            {/*                    <em>{user.roles.map(role => role.name.toLowerCase()).join(", ")}</em>*/}
-                            {/*                    :*/}
-                            {/*                    <Form id={`form-${user.username}`} action={handleRole}>*/}
-                            {/*                        <select defaultValue={user.roles[0].name} name="role">*/}
-                            {/*                            { roles.map(role => (*/}
-                            {/*                                <option key={role.name} value={role.name}>{role.name.toLowerCase()}</option>*/}
-                            {/*                            ))*/}
-                            {/*                            }*/}
-                            {/*                        </select>*/}
-                            {/*                    </Form>*/}
-                            {/*            }</td>*/}
-                            {/*            <td>{*/}
-                            {/*                edit !== user.username &&*/}
-                            {/*                <Button variant="success" className="my-1" type="button" onClick={() => {*/}
-                            {/*                    navigate(`/user/${user.username}`);*/}
-                            {/*                }}>Detalii</Button>*/}
-                            {/*            }*/}
-                            {/*                {*/}
-                            {/*                }*/}
-                            {/*                {*/}
-                            {/*                    isAdmin(auth.user.roles) && (*/}
-                            {/*                        edit !== user.username &&*/}
-                            {/*                        <Button variant="warning" type="button" className="mx-1" onClick={() => setEdit(user.username)}>Editare rol</Button>*/}
-                            {/*                    )*/}
-                            {/*                }*/}
-                            {/*                {*/}
-                            {/*                    isAdmin(auth.user.roles) && (*/}
-                            {/*                        edit === user.username &&*/}
-                            {/*                        <Button variant="primary" type="submit" form={`form-${user.username}`}>Salvare</Button>*/}
-                            {/*                    )*/}
-                            {/*                }*/}
-                            {/*            </td>*/}
-                            {/*        </tr>*/}
-                            {/*    )) : <tr>*/}
-                            {/*        <td colSpan={3}>Nu exista rezultate</td>*/}
-                            {/*    </tr>*/}
-
-                            {/*}*/}
                             </tbody>
                         </Table>
                     </div>

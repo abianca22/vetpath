@@ -31,6 +31,7 @@ export interface PetDTO {
     birthDate: string;
     breed: BreedDTO;
     owner: UserDTO;
+    weight: number;
     photoUrl: string | null;
 }
 

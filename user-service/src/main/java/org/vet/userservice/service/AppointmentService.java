@@ -180,4 +180,11 @@ public class AppointmentService {
         }
         return appointments;
     }
+
+    public Appointment updateAppointmentPet(Integer id, Integer petId) {
+        Pet pet = petService.getPetById(petId);
+        Appointment appointment = this.getById(id);
+        appointment.setPet(pet);
+        return appointmentRepository.save(appointment);
+    }
 }

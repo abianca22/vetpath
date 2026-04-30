@@ -39,8 +39,12 @@ public class UserController {
     @GetMapping("/users/me")
     public UserDTO getUser(@AuthenticationPrincipal Jwt jwt) {
         UserDTO user = decodeJWT(jwt);
-        var existingUser = userService.getUserById(user.getId());
-        if (existingUser == null) {
+        User existingUser = null;
+        try {
+            existingUser = userService.getUserById(user.getId());
+        }
+        catch (NoDataFoundException e) {
+            System.out.println("User not found in database, creating new user...");
             User newUser = User.builder()
                     .id(user.getId())
                     .username(user.getUsername())
@@ -101,11 +105,9 @@ public class UserController {
     public ResponseEntity<UserDTO> changeUserRole(@AuthenticationPrincipal Jwt jwt) {
         String userId = jwt.getSubject();
         User user = userService.requestRoleChange(userService.getUserById(userId));
-        System.out.println(user);
         UserDTO userDTO = userMapper.toUserDTO(user);
         userDTO.setRoles(user.getRoles().stream().map(r -> roleMapper.toRoleDTO(r)).collect(Collectors.toList()));
         userDTO.setPendingRequest(user.getPendingRequest());
-        System.out.println(userDTO);
         return ResponseEntity.ok().body(userDTO);
     }
 

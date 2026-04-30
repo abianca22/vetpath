@@ -161,7 +161,7 @@ export default function IndividualPet() {
                                     <Col xs={6} className="fw-bold">Specie</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-type">
-                                            <FormSelect name="type" defaultValue={pet.breed?.petType?.name} onChange={(e) => {
+                                            <FormSelect name="type" defaultValue={pet.breed?.petType?.id} onChange={(e) => {
                                                 const selectedTypeId = e.target.value;
                                                 e.persist();
                                                 fetchBreedsByType(selectedTypeId);
@@ -176,7 +176,7 @@ export default function IndividualPet() {
                                     <Col xs={6} className="fw-bold">Rasă</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-breed">
-                                            <FormSelect name="breed" defaultValue={pet.breed?.name} disabled={!isActive}>
+                                            <FormSelect name="breed" defaultValue={pet.breed ? pet.breed.id : ''} disabled={!isActive}>
                                                 {breeds && breeds.length > 0 ? breeds.map(breed => (
                                                     <option key={breed.id} value={breed.id}>{breed.name}</option>
                                                 )) : <option disabled>Nu s-au găsit rase</option>}

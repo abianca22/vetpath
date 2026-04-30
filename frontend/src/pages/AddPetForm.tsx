@@ -29,7 +29,7 @@ export default function AddPetForm(props) {
                 const res = await getAllTypes();
                 setTypes(res);
                 setError(null);
-                await fetchBreedsByType(res[0].name);
+                await fetchBreedsByType(res[0].id);
             }
             catch (err) {
                 setError(err.message);
@@ -130,7 +130,7 @@ export default function AddPetForm(props) {
                                 <FormSelect name="type" defaultValue={props.pet ? props.pet?.breed?.type?.id : ((types && types.length > 0) ? types[0].id: '')} onChange={(e) => {
                                     const selectedTypeId = e.target.value;
                                     e.persist();
-                                    fetchBreedsByType(types.find(type => type.id === parseInt(selectedTypeId)).name);
+                                    fetchBreedsByType(selectedTypeId);
                                 }} aria-label="Tip animal">
                                     {types && types.length > 0 ? types.map(type => (
                                         <option key={type.id} value={type.id}>{type.name}</option>

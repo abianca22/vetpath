@@ -139,12 +139,13 @@ export const getAllBreeds = async(): Promise<Array<BreedDTO>> => {
     return await res.json();
 }
 
-export const getBreedsByType = async(typeName): Promise<BreedDTO> => {
-    const resTypes = await getAllTypes();
-    const typeId = resTypes.find(type => type.name.toLowerCase() === typeName.toLowerCase())?.id;
+export const getBreedsByType = async(typeId): Promise<BreedDTO> => {
     const res = await fetch(`http://localhost:8081/api/pets/types/${typeId}/breeds`, {
         method: "GET"
     });
+    if (!res.ok) {
+        throw new Error(`Failed to get breeds for type ${typeId}: ${await res.text()}`);
+    }
     return await res.json();
 }
 
@@ -523,3 +524,18 @@ export const changeAppointmentPet = async(token, id, petId): Promise<Appointment
 
     return await res.json();
 }
+
+// export const fetchAppointments = async(token, startDate, endDate, petId, vetName, clinicId, status, owner): Promise<Array<AppointmentDTO>> =>{
+//     const res = await fetch(`http://localhost:8081/api/appointments${startDate || endDate || petId !== null || vetName !== null || clinicId !== null || status !== null ?  '?' : ''}startDate=${startDate}&endDate=${endDate}&pet=${petId}&vet=${vetName}&clinic=${clinicId}&status=${status === 'BOOKED'}&owner=${owner}`, {
+//         method: 'GET',
+//         headers: {
+//             Authorization: `Bearer ${token}`
+//         }
+//     });
+//
+//     if (!res.ok) {
+//         throw new Error(await res.text());
+//     }
+//
+//     return await res.json();
+// }

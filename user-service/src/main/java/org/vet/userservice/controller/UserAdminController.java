@@ -8,13 +8,15 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.vet.userservice.exception.AccessDeniedException;
+import org.vet.userservice.exception.InvalidDataException;
 import org.vet.userservice.model.dto.UserDTO;
+import org.vet.userservice.model.entity.Appointment;
+import org.vet.userservice.model.entity.Clinic;
 import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.enums.AppointmentStatus;
 import org.vet.userservice.model.mapper.RoleMapper;
 import org.vet.userservice.model.mapper.UserMapper;
-import org.vet.userservice.service.KeycloakAdminService;
-import org.vet.userservice.service.RoleService;
-import org.vet.userservice.service.UserService;
+import org.vet.userservice.service.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,6 +32,10 @@ public class UserAdminController {
     private final RoleService roleService;
     @Autowired
     private RoleMapper roleMapper;
+    @Autowired
+    private AppointmentService appointmentService;
+    @Autowired
+    private ClinicService clinicService;
 
     public UserDTO decodeJWT(Jwt jwt) {
         List<String> rolesList = new ArrayList<>();
@@ -93,6 +99,20 @@ public class UserAdminController {
         keycloakAdminService.removeAllGroupsFromUserExcept(userId, group);
         keycloakAdminService.addGroupToUser(userId, group);
         var userRole = roleService.findByName(role);
+        var oldUser = userService.getUserById(userId);
+        if (userRole.equals(roleService.findByName("PET_OWNER"))) {
+            List<Appointment> appointments = appointmentService.getByVet(oldUser);
+            for (Appointment appointment : appointments) {
+                if (appointment.getStatus().equals(AppointmentStatus.BOOKED)) {
+                    throw new InvalidDataException("Nu se poate schimba rolul utilizatorului deoarece are programari rezervate!");
+                }
+                appointmentService.deleteSlot(appointment.getId());
+            }
+            List<Clinic> clinics = clinicService.getClinicsByVetEmployee(oldUser);
+            for (Clinic clinic : clinics) {
+                clinicService.removeVetFromClinic(clinic, oldUser);
+            }
+        }
         var user = userService.updateUserRole(userService.getUserById(userId), userRole);
         var userDTO = userMapper.toUserDTO(user);
         userDTO.setRoles(user.getRoles().stream().map(r -> roleMapper.toRoleDTO(r)).collect(Collectors.toList()));

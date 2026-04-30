@@ -1,9 +1,13 @@
 package org.vet.userservice.service;
 
 import org.springframework.stereotype.Service;
+import org.vet.userservice.exception.InvalidDataException;
 import org.vet.userservice.exception.NoDataFoundException;
+import org.vet.userservice.model.entity.Appointment;
 import org.vet.userservice.model.entity.Role;
 import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.enums.AppointmentStatus;
+import org.vet.userservice.repository.AppointmentRepository;
 import org.vet.userservice.repository.UserRepository;
 
 import java.util.ArrayList;
@@ -13,12 +17,16 @@ import java.util.Set;
 
 @Service
 public class UserService {
+    private final RoleService roleService;
+    private final AppointmentRepository appointmentRepository;
     private UserRepository userRepository;
     private KeycloakAdminService keycloakAdminService;
 
-    public UserService(UserRepository userRepository, KeycloakAdminService keycloakAdminService) {
+    public UserService(UserRepository userRepository, KeycloakAdminService keycloakAdminService, RoleService roleService, AppointmentRepository appointmentRepository) {
         this.userRepository = userRepository;
         this.keycloakAdminService = keycloakAdminService;
+        this.roleService = roleService;
+        this.appointmentRepository = appointmentRepository;
     }
 
     public User saveUser(User user) {

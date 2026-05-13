@@ -128,7 +128,7 @@ export default function SlotsList() {
             setSlots(filterByStatus(res));
         }
         findSlots();
-    }, [auth.token, params, searchParams, closeCount]);
+    }, [params, searchParams, closeCount]);
 
 
     return (

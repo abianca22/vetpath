@@ -59,3 +59,13 @@ export interface SlotDTO {
     appointment: AppointmentDTO;
     slotsCount: number;
 }
+
+export interface MedicalRecordDTO {
+    id: number;
+    vet: UserDTO;
+    pet: PetDTO;
+    diagnosis: string;
+    symptoms: string;
+    treatment: string;
+    recordDate: string;
+}

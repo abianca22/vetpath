@@ -32,7 +32,7 @@ export default function Clinics() {
             setData(res);
         };
         getClinics();
-    }, [auth.token, closeCount]);
+    }, [closeCount]);
 
     return (
             <Container className="d-flex flex-grow-1" fluid>

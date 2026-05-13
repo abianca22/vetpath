@@ -16,7 +16,7 @@ export default function AddSlotForm(props) {
             setClinics(res);
         }
         fetchClinics();
-    }, [auth.token]);
+    }, []);
 
 
     async function postData(formData) {

@@ -57,6 +57,8 @@ public class PetController {
     private UsefulFunctions usefulFunctions;
     @Autowired
     private BreedMapper breedMapper;
+    @Autowired
+    private MedicalRecordService medicalRecordService;
 
     @GetMapping("/user/{username}/{petId}")
     public ResponseEntity<?> getUsersPet(@PathVariable String username, @PathVariable Integer petId) {
@@ -191,7 +193,7 @@ public class PetController {
         if (!pet.getOwner().getId().equals(user.getId()) && !usefulFunctions.isAdmin(userDTO)) {
             throw new AccessDeniedException("Nu aveti permisiunea de a sterge acest animal de companie!");
         }
-        petService.deletePet(pet);
+        medicalRecordService.deletePet(pet);
         return ResponseEntity.ok().build();
     }
 

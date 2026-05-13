@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Profile from "./pages/Profile";
 import RoleTestPage from "./pages/RoleTestPage.tsx";
 import RequestsPage from "./pages/RequestsPage.tsx";
@@ -23,14 +23,15 @@ import IndividualClinic from "./pages/IndividualClinicPage.tsx";
 import SlotsList from "./pages/SlotsListPage.tsx";
 import AppointmentsList from "./pages/AppointmentsListPage.tsx";
 import AppointmentDetails from "./pages/AppointmentDetailsPage.tsx";
+import RecordDetails from "./pages/RecordDetailsPage.tsx";
+import RecordsList from "./pages/MedicalRecordsListPage.tsx";
 
 function App() {
     const auth = useContext(AuthContext);
     return (
         <>
             <div className="d-flex min-vh-100 flex-column">
-                <Menu auth={auth}/>
-                <BrowserRouter>
+                    <Menu auth={auth}/>
                     <Routes>
                         <Route path="/" element={<PrivateRoute element={Profile} roles={roles}/>} />
                         <Route path="/profile" element={<PrivateRoute element={Profile} roles={roles}/>} />
@@ -53,8 +54,9 @@ function App() {
                         <Route path="/slots" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
                         <Route path="/appointments" element={<PrivateRoute element={AppointmentsList} roles={roles}/>} />
                         <Route path="/appointments/details" element={<PrivateRoute element={AppointmentDetails} roles={roles}/>}/>
+                        <Route path="/records/details" element={<PrivateRoute element={RecordDetails} roles={roles}/>}/>
+                        <Route path="/records" element={<PrivateRoute element={RecordsList} roles={roles}/>} />
                     </Routes>
-                </BrowserRouter>
             </div>
         </>
     );

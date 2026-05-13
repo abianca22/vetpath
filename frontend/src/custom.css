@@ -93,3 +93,15 @@ a.no-decoration {
     text-decoration: none;
     color: black;
 }
+
+textarea {
+    text-align: start !important;
+}
+
+textarea:disabled {
+    border: 0;
+    resize: none;
+    padding: 0;
+    margin: 0;
+    font-size: inherit;
+}

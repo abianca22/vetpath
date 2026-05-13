@@ -1,5 +1,6 @@
 package org.vet.userservice.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -47,4 +48,8 @@ public class Appointment {
     private String cancelReason;
 
     private Boolean done = false;
+
+    @OneToOne(mappedBy = "appointment")
+    @JsonBackReference
+    private MedicalRecord medicalRecord;
 }

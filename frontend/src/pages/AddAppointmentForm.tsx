@@ -89,7 +89,7 @@ export default function AddAppointmentForm(props) {
             }
         }
         fetchPets();
-    }, [auth.token]);
+    }, []);
 
 
     useEffect(() => {

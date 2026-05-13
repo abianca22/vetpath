@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 public class AppointmentController {
     @Autowired
     private AppointmentService appointmentService;
-
     @Autowired
     private AppointmentMapper appointmentMapper;
     @Autowired
@@ -50,13 +49,6 @@ public class AppointmentController {
     private RoleService roleService;
     @Autowired
     private ClinicService clinicService;
-
-    // Confirmare programare de catre medic:
-    // - se listeaza toate programarile medicului din trecut
-    // - confirma -> done = true
-    // Frontend:
-    // - in lista de programari, daca data e din trecut, apare confirmare programare (doar pentru medici)
-    // - daca medicul confirma programarea, se seteaza done = true
 
     // - creare "rezumat" medical pentru o programare (doar pentru medici, dupa ce programarea a fost confirmata)
     // - modificare astfel incat atunci cand se confirma din frontend programarea, sa se completeze si sa se trimita un formular cu date precum simptome, diagnostic, tratament. Daca nu sunt completate, tot se creeaza, dar campurile raman goale si "istoricul" o simple asociere cu programarea
@@ -215,7 +207,24 @@ public class AppointmentController {
         }
         appointmentService.updateAppointmentPet(id, petDTO.getId());
         Appointment updatedAppointment = appointmentService.getById(id);
-        System.out.println(updatedAppointment.getPet().getId());
         return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(updatedAppointment));
     }
+
+    @PreAuthorize("hasRole('VETERINARIAN')")
+    @PutMapping("/{id}/confirm")
+    public ResponseEntity<?> confirmAppointment(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        Appointment appointment = appointmentService.getById(id);
+        if (appointment.getVet() == null) {
+            throw new NoDataFoundException("Veterinarul nu mai detine un cont pe platforma");
+        }
+        if (!currentUser.getId().equals(appointment.getVet().getId())) {
+            throw new AccessDeniedException("Doar veterinarul poate confirma programarea");
+        }
+        if (!appointment.getVet().getClinics().contains(appointment.getClinic())) {
+            throw new AccessDeniedException("Veterinarul nu mai apartine clinicii in care a fost inregistrata programarea");
+        }
+        return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointmentService.updatePastAppointmentStatus(id, true)));
+    }
+
 }

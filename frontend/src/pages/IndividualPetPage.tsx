@@ -120,7 +120,7 @@ export default function IndividualPet() {
             }
         }
         fetchBD();
-    }, [auth.token, params.username, params.petName, pet && pet.birthDate]);
+    }, [params.username, params.petName, pet && pet.birthDate]);
 
     async function handleDelete() {
         try {
@@ -158,7 +158,7 @@ export default function IndividualPet() {
                                 <hr />
 
                                 <Row className="gx-3 gy-2">
-                                    <Col xs={6} className="fw-bold">Specie</Col>
+                                    <Col xs={6} className="fw-bold d-flex align-items-center">Specie</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-type">
                                             <FormSelect name="type" defaultValue={pet.breed?.petType?.id} onChange={(e) => {
@@ -173,7 +173,7 @@ export default function IndividualPet() {
                                         </Form.Group>
                                         </Col>
 
-                                    <Col xs={6} className="fw-bold">Rasă</Col>
+                                    <Col xs={6} className="fw-bold d-flex align-items-center">Rasă</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-breed">
                                             <FormSelect name="breed" defaultValue={pet.breed ? pet.breed.id : ''} disabled={!isActive}>
@@ -184,7 +184,7 @@ export default function IndividualPet() {
                                         </Form.Group>
                                     </Col>
 
-                                    <Col xs={6} className="fw-bold">Data nașterii</Col>
+                                    <Col xs={6} className="fw-bold d-flex align-items-center">Data nașterii</Col>
                                     <Col xs={6}><Form.Group controlId="pet-dob">
                                         <div>
                                             <DatePicker disabled={!isActive} className="custom-picker"

@@ -38,7 +38,7 @@ export default function Visit() {
             }
         }
         getClinics();
-    }, [auth.token, username]);
+    }, [username]);
 
 
 

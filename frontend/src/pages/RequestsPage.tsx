@@ -61,7 +61,7 @@ export default function SendRequestPage() {
             setUsers(await res.json());
         }
         fetchUsers();
-    }, [auth.token]);
+    }, []);
 
     return (
         <Container className="py-3 d-flex flex-grow-1" fluid>

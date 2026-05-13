@@ -9,13 +9,13 @@ export default function PrivateRoute({element: Component, roles, ...rest}) {
         return <div>Loading...</div>;
     }
     if (!auth.user) {
-        return <Navigate to="/login"></Navigate>;
+        return <Navigate to="/login" replace/>;
     }
     if (!roles.some((role: RoleDTO) => {
         const currentRole = auth.user.roles.find((userRole: RoleDTO) => userRole.name === role.name);
         return currentRole !== null && currentRole !== undefined;
     })) {
-        return <Navigate to="/access-denied"></Navigate>;
+        return <Navigate to="/access-denied" replace/>;
     }
 
     return <Component {...rest} />

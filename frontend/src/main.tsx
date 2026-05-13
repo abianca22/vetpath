@@ -7,14 +7,18 @@ import keycloak from "./api/keycloak.ts";
 import 'bootstrap/dist/css/bootstrap.css';
 import './custom.css';
 import 'rsuite/dist/rsuite.css';
+import {BrowserRouter} from "react-router-dom";
 
-keycloak.init({ onLoad: "check-sso" }).then(() => {
+keycloak.init({ onLoad: "check-sso", pkceMethod: 'S256', responseMode: "query", checkLoginIframe: false }).then(() => {
     ReactDOM.createRoot(document.getElementById("root")!).render(
         <React.StrictMode>
+            <BrowserRouter>
             <AuthProvider keycloak={keycloak}>
                 <App/>
             </AuthProvider>
+            </BrowserRouter>
         </React.StrictMode>
     );
 });
+
 

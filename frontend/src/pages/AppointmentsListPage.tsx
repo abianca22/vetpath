@@ -6,6 +6,7 @@ import AddAppointmentForm from "./AddAppointmentForm.tsx";
 import CancelAppointmentForm from "../components/CancelAppointmentForm.tsx";
 import {useNavigate} from "react-router-dom";
 import {DatePicker} from "rsuite";
+import moment from "moment/moment";
 
 export default function AppointmentsList() {
     const auth = useContext(AuthContext);
@@ -51,6 +52,12 @@ export default function AppointmentsList() {
     const closeCancelModalNoCount = () => {
         setShowCancelModal(false);
         setCurrentAppointment(null);
+        setError(null);
+    }
+
+    function pastAppointment(app) {
+        const date = moment(`${app.slot.split(' ')[0].split('.').reverse().join('-')} ${app.slot.split(' ')[1]}`);
+        return date.isSameOrBefore(moment());
     }
 
     useEffect(() => {
@@ -64,7 +71,7 @@ export default function AppointmentsList() {
             setClinics(res);
         }
         findClinics();
-    }, [auth.token, closeCount, cancelCloseCount]);
+    }, [closeCount, cancelCloseCount]);
 
     const handleFilterSubmit = (e) => {
         e.preventDefault();
@@ -200,8 +207,8 @@ export default function AppointmentsList() {
                                         <td>{app.pet.name} ({app.pet.owner.username})</td>
                                         <td>{app.status.includes('BOOKED') ? 'Activa' : `Anulata de ${app.cancelledBy.username}`}</td>
                                         <td>
-                                            <Button variant="success" onClick={() => {sessionStorage.setItem("appointmentId", app.id.toString()); navigate('/appointments/details');}}>Detalii</Button>
-                                            {(app.vet.id === auth.user.id || app.pet.owner.id === auth.user.id) && app.status.includes('BOOKED') && <Button variant="danger" className="m-1" onClick={() => {setCurrentAppointment(app); openCancelModal();}}>Anulare</Button>}
+                                            <Button variant="primary" onClick={() => {sessionStorage.setItem("appointmentId", app.id.toString()); navigate('/appointments/details');}}>Detalii</Button>
+                                            {(app.vet.id === auth.user.id || app.pet.owner.id === auth.user.id) && app.status.includes('BOOKED') && !pastAppointment(app) && <Button variant="danger" className="m-1" onClick={() => {setCurrentAppointment(app); openCancelModal();}}>Anulare</Button>}
                                         </td>
                                     </tr>
                                 )) : <tr>

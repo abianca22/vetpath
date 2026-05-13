@@ -28,7 +28,7 @@ export const AuthProvider = ({ children, keycloak }: { children: ReactNode, keyc
         };
         fetchUser();
 
-    }, [keycloak.token]);
+    }, []);
 
     const logout = () => {
         keycloak.logout({

@@ -26,7 +26,7 @@ export default function UsersList() {
             setData(res);
         };
         getUsers();
-    }, [auth.token]);
+    }, []);
 
     return (
         <>

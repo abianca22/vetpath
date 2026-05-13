@@ -187,4 +187,23 @@ public class AppointmentService {
         appointment.setPet(pet);
         return appointmentRepository.save(appointment);
     }
+
+    public Appointment updatePastAppointmentStatus(Integer id, boolean done) {
+        Appointment appointment = this.getById(id);
+        if (appointment.getDone().equals(done)) {
+            throw new AccessDeniedException("Programarea a fost deja confirmata");
+        }
+        appointment.setDone(done);
+        return appointmentRepository.save(appointment);
+    }
+
+    public void clearRecord(Integer id) {
+        Appointment appointment = this.getById(id);
+        appointment.setMedicalRecord(null);
+        appointmentRepository.save(appointment);
+    }
+
+    public void deleteAllByPet(Pet pet) {
+        appointmentRepository.deleteAllByPet(pet);
+    }
 }

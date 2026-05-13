@@ -3,9 +3,8 @@ package org.vet.userservice.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.vet.userservice.exception.NoDataFoundException;
-import org.vet.userservice.model.entity.Breed;
-import org.vet.userservice.model.entity.Pet;
-import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.entity.*;
+import org.vet.userservice.repository.AppointmentRepository;
 import org.vet.userservice.repository.PetRepository;
 
 import java.util.List;

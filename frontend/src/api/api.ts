@@ -24,7 +24,7 @@
 //   return res.json().catch(() => null);
 // }
 
-import type {AppointmentDTO, BreedDTO, ClinicDTO, PetDTO, TypeDTO, UserDTO} from "../types.ts";
+import type {AppointmentDTO, BreedDTO, ClinicDTO, MedicalRecordDTO, PetDTO, TypeDTO, UserDTO} from "../types.ts";
 
 export const getUserInfo = async (token): Promise<UserDTO> => {
   const res = await fetch("http://localhost:8081/api/users/users/me", {
@@ -139,7 +139,9 @@ export const getAllBreeds = async(): Promise<Array<BreedDTO>> => {
     return await res.json();
 }
 
-export const getBreedsByType = async(typeId): Promise<BreedDTO> => {
+export const getBreedsByType = async(typeName): Promise<BreedDTO> => {
+    const resTypes = await getAllTypes();
+    const typeId = resTypes.find(type => type.name.toLowerCase() === typeName.toLowerCase())?.id;
     const res = await fetch(`http://localhost:8081/api/pets/types/${typeId}/breeds`, {
         method: "GET"
     });
@@ -519,6 +521,136 @@ export const changeAppointmentPet = async(token, id, petId): Promise<Appointment
     });
 
     if(!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const confirmAppointment = async(token, id): Promise<AppointmentDTO> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/${id}/confirm`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+
+}
+
+export const addRecord = async(token, recordData): Promise<MedicalRecordDTO> => {
+    const res = await fetch(`http://localhost:8081/api/records`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(recordData)
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const getRecordByAppointment = async (token, appointmentId): Promise<MedicalRecordDTO | null> => {
+    const res = await fetch(`http://localhost:8081/api/records/appointment/${appointmentId}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+    return await res.json();
+}
+
+export const getRecordById = async (token, id): Promise<MedicalRecordDTO | null> => {
+    const res = await fetch(`http://localhost:8081/api/records/${id}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+    return await res.json();
+}
+
+export const getRecordsByPet = async(token, petId): Promise<Array<MedicalRecordDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/records/pet/${petId}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const getRecordsByVet = async(token, vetId): Promise<Array<MedicalRecordDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/records/vet/${vetId}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const getRecords = async(token, owner): Promise<Array<MedicalRecordDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/records/all${owner !== null && owner !== undefined ? '?owner=' + owner : ''}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+    return await res.json();
+}
+
+export const deleteRecord = async(token, recordId): Promise<void> => {
+    const res = await fetch(`http://localhost:8081/api/records/${recordId}`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+}
+
+export const editRecord = async(token, id, recordData): Promise<MedicalRecordDTO> => {
+    const res = await fetch(`http://localhost:8081/api/records/${id}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(recordData)
+    });
+
+    if (!res.ok) {
         throw new Error(await res.text());
     }
 

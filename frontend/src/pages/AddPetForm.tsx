@@ -62,6 +62,8 @@ export default function AddPetForm(props) {
         const petDob = dob ? format(dob, 'dd.MM.yyyy') : null;
         const petDobArr = petDob ? petDob.split('.').map(num => parseInt(num)) : null;
         const date = petDobArr ? new Date(petDobArr[2], petDobArr[1] - 1, petDobArr[0]) : null;
+        const genderValue = (formData.get("gender") as string);
+        const weight = formData.get("weight") ? parseFloat(formData.get("weight") as string) : null;
         if (date === null || isNaN(date.getTime())) {
             setError("Data nașterii nu este validă. Asigurați-vă că ați selectat o dată. Dacă nu cunoașteți data exactă, alegeți una aproximativă.");
             return;
@@ -73,7 +75,7 @@ export default function AddPetForm(props) {
         if (props.pet) {
             const savePet = async () => {
                 try {
-                    await editPet(auth.token, {id: props.pet.id, name: name, breed: {id: breedId}, birthDate: petDob});
+                    await editPet(auth.token, {id: props.pet.id, name: name, breed: {id: breedId}, birthDate: petDob, gender: genderValue.toUpperCase(), weight: weight});
                     setError(null);
                     props.save();
                 }
@@ -86,7 +88,7 @@ export default function AddPetForm(props) {
         else {
             const savePet = async () => {
                 try {
-                    await addPet(auth.token, {name: name, breed: {id: breedId}, birthDate: petDob});
+                    await addPet(auth.token, {name: name, breed: {id: breedId}, birthDate: petDob, gender: genderValue.toUpperCase(), weight: weight});
                     setError(null);
                     props.save();
                 } catch (err) {
@@ -151,6 +153,17 @@ export default function AddPetForm(props) {
                         </Col>
 
                         <Col xs={12} md={6}>
+                            <Form.Group controlId="pet-gender">
+                                <Form.Label className="fw-medium mb-1">Gen</Form.Label>
+                                <FormSelect name="gender" defaultValue={props.pet ? props.pet?.gender : 'none'} aria-label="Gender">
+                                    <option value="male">Mascul</option>
+                                    <option value="female">Femela</option>
+                                    <option value="none">Nu se mentioneaza</option>
+                                </FormSelect>
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={12} md={6}>
                             <Form.Group controlId="pet-dob">
                                 <Form.Label className="fw-medium mb-1">Data nașterii</Form.Label>
                                 <div>
@@ -165,6 +178,17 @@ export default function AddPetForm(props) {
                                 </div>
                             </Form.Group>
                         </Col>
+                        <Col xs={12} md={6}>
+                            <Form.Group controlId="pet-weight">
+                                <Form.Label className="fw-medium mb-1">Greutate</Form.Label>
+                                {
+                                    props.pet ? <Form.Control defaultValue={props.pet.weight} name="name" type="text" />
+                                        :
+                                        <Form.Control name="weight" type="text" step={0.01} min={0}/>
+                                }
+                            </Form.Group>
+                        </Col>
+
                     </Row>
                 </Form>
             </Modal.Body>

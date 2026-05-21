@@ -29,6 +29,13 @@ input[disabled] {
     background-color: white;
 }
 
+input[disabled][type="number"][step="0.01"] {
+    border: none;
+    outline: none;
+    background-color: white;
+    text-align: start !important;
+}
+
 input {
     border-color: darkgray;
 }

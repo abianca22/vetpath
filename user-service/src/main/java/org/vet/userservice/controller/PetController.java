@@ -17,6 +17,7 @@ import org.vet.userservice.model.dto.PetTypeDTO;
 import org.vet.userservice.model.entity.Breed;
 import org.vet.userservice.model.entity.Pet;
 import org.vet.userservice.model.entity.PetType;
+import org.vet.userservice.model.enums.PetGender;
 import org.vet.userservice.model.mapper.BreedMapper;
 import org.vet.userservice.model.mapper.PetMapper;
 import org.vet.userservice.model.mapper.PetTypeMapper;
@@ -114,11 +115,16 @@ public class PetController {
         if (existingPet.isPresent() && existingPet.get().getName().equals(petDTO.getName()) && existingPet.get().getBreed().getId().equals(breed.getId()) && existingPet.get().getBirthDate().equals(petDTO.getBirthDate())) {
             throw new InvalidDataException("Nu puteti avea doua animale de aceeasi rasa, cu acelasi nume si aceeasi data a nasterii!");
         }
+        if (petDTO.getGender() == null) {
+            petDTO.setGender(PetGender.NONE);
+        }
         Pet pet = Pet.builder()
                 .name(petDTO.getName())
                 .birthDate(petDTO.getBirthDate())
                 .breed(breed)
                 .owner(user)
+                .weight(petDTO.getWeight())
+                .gender(petDTO.getGender())
                 .build();
         Pet savedPet = petService.savePet(pet);
         return ResponseEntity.ok().body(petMapper.toPetDTO(savedPet));

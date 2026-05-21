@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.vet.userservice.model.enums.PetGender;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -48,4 +49,7 @@ public class Pet {
     @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonBackReference
     private List<MedicalRecord> medicalRecords;
+
+    @Enumerated(EnumType.STRING)
+    private PetGender gender;
 }

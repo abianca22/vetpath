@@ -1,9 +1,12 @@
 package org.vet.userservice.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.vet.userservice.model.enums.PetGender;
 
 import java.time.LocalDate;
 
@@ -33,5 +36,8 @@ public class PetDTO {
     private UserDTO owner;
 
     private String photoUrl;
+
+    @Enumerated(EnumType.STRING)
+    private PetGender gender;
 }
 

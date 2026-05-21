@@ -47,6 +47,10 @@ public class MedicalRecordService {
         return recordRepository.findAllByPet(pet);
     }
 
+    public List<MedicalRecord> findTopKMostRecentByPet(Pet pet, Integer k) {
+        return recordRepository.findTopKMostRecentByPet(pet, k);
+    }
+
     public List<MedicalRecord> findAllByVet(User vet) {
         return recordRepository.findAllByVet(vet);
     }

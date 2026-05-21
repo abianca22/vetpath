@@ -14,4 +14,12 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, In
     Optional<MedicalRecord> findByAppointment(Appointment appointment);
     List<MedicalRecord> findAllByPet(Pet pet);
     List<MedicalRecord> findAllByVet(User vet);
+    @Query("""
+        SELECT medicalRecord
+        FROM MedicalRecord medicalRecord
+        WHERE medicalRecord.pet=:pet
+        ORDER BY medicalRecord.appointment.slot DESC
+        LIMIT :k
+""")
+    List<MedicalRecord> findTopKMostRecentByPet(Pet pet, Integer k);
 }

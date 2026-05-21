@@ -25,6 +25,7 @@ import AppointmentsList from "./pages/AppointmentsListPage.tsx";
 import AppointmentDetails from "./pages/AppointmentDetailsPage.tsx";
 import RecordDetails from "./pages/RecordDetailsPage.tsx";
 import RecordsList from "./pages/MedicalRecordsListPage.tsx";
+import Chat from "./pages/SymptomsChatPage.tsx";
 
 function App() {
     const auth = useContext(AuthContext);
@@ -56,6 +57,7 @@ function App() {
                         <Route path="/appointments/details" element={<PrivateRoute element={AppointmentDetails} roles={roles}/>}/>
                         <Route path="/records/details" element={<PrivateRoute element={RecordDetails} roles={roles}/>}/>
                         <Route path="/records" element={<PrivateRoute element={RecordsList} roles={roles}/>} />
+                        <Route path="/ask" element={<PrivateRoute element={Chat} roles={roles}/>} />
                     </Routes>
             </div>
         </>

@@ -43,6 +43,8 @@ export default function IndividualPet() {
     async function postData(formData) {
         const name = formData.get("name");
         const breedId = parseInt(formData.get("breed"));
+        const weight = parseFloat(formData.get("weight"));
+        const gender = formData.get("gender") as string;
         const petDob = dob ? format(dob, 'dd.MM.yyyy') : null;
         const petDobArr = petDob ? petDob.split('.').map(num => parseInt(num)) : null;
         const date = petDobArr ? new Date(petDobArr[2], petDobArr[1] - 1, petDobArr[0]) : null;
@@ -57,7 +59,7 @@ export default function IndividualPet() {
         if (pet) {
             const savePet = async () => {
                 try {
-                    await editPet(auth.token, {id: pet.id, name: name, breed: {id: breedId}, birthDate: petDob});
+                    await editPet(auth.token, {id: pet.id, name: name, breed: {id: breedId}, birthDate: petDob, weight: weight, gender: gender.toUpperCase()});
                     setError(null);
                 }
                 catch (err) {
@@ -86,7 +88,7 @@ export default function IndividualPet() {
                 const pet = pets.filter(p => p.name === params.petName)[0];
                 setPet(pet);
                 setError(null);
-                console.log(await findPetByOwnerAndName(auth.token, params.username));
+                console.log(pet);
             } catch (err) {
                 setError(err.message);
             }
@@ -197,6 +199,24 @@ export default function IndividualPet() {
                                             />
                                         </div>
                                     </Form.Group>
+                                    </Col>
+
+                                    <Col xs={6} className="fw-bold d-flex align-items-center">Greutate</Col>
+                                    <Col xs={6}><Form.Group controlId="pet-weight">
+                                            <Form.Control disabled={!isActive} defaultValue={pet.weight} name="weight" type="number" step={0.01} className={!isActive ? 'disabled-styling' : ''}
+                                            />
+                                    </Form.Group>
+                                    </Col>
+
+                                    <Col xs={6} className="fw-bold d-flex align-items-center">Gen</Col>
+                                    <Col xs={6}>
+                                        <Form.Group controlId="pet-gender">
+                                            <FormSelect name="gender" defaultValue={pet ? pet?.gender.toLowerCase() : 'none'} aria-label="Gender" disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}>
+                                                <option value="male">Mascul</option>
+                                                <option value="female">Femela</option>
+                                                <option value="none">Nu se mentioneaza</option>
+                                            </FormSelect>
+                                        </Form.Group>
                                     </Col>
                                 </Row>
 

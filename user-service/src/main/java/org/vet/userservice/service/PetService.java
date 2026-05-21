@@ -54,6 +54,12 @@ public class PetService {
         if (pet.getBirthDate() != null) {
             oldPet.setBirthDate(pet.getBirthDate());
         }
+        if (pet.getWeight() != null) {
+            oldPet.setWeight(pet.getWeight());
+        }
+        if (pet.getGender() != null) {
+            oldPet.setGender(pet.getGender());
+        }
         return petRepository.save(oldPet);
     }
 

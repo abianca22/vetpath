@@ -139,9 +139,7 @@ export const getAllBreeds = async(): Promise<Array<BreedDTO>> => {
     return await res.json();
 }
 
-export const getBreedsByType = async(typeName): Promise<BreedDTO> => {
-    const resTypes = await getAllTypes();
-    const typeId = resTypes.find(type => type.name.toLowerCase() === typeName.toLowerCase())?.id;
+export const getBreedsByType = async(typeId): Promise<BreedDTO> => {
     const res = await fetch(`http://localhost:8081/api/pets/types/${typeId}/breeds`, {
         method: "GET"
     });
@@ -655,6 +653,23 @@ export const editRecord = async(token, id, recordData): Promise<MedicalRecordDTO
     }
 
     return await res.json();
+}
+
+export const sendQuestion = async(token, question, petId): Promise<string> => {
+    const res = await fetch(`http://localhost:8081/chat/ask/${petId}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "text/plain"
+        },
+        body: question
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.text();
 }
 
 // export const fetchAppointments = async(token, startDate, endDate, petId, vetName, clinicId, status, owner): Promise<Array<AppointmentDTO>> =>{

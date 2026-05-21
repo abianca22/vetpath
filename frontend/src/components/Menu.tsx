@@ -18,6 +18,7 @@ export default function Menu({auth}) {
                             {isVeterinarian(auth.user.roles) && <Nav.Link href="/slots" className={window.location.href.includes('/slots') ? "selected" : ""}>Program</Nav.Link>}
                             <Nav.Link href="/appointments" className={window.location.href.includes('appointments') ? "selected" : ""}>Programari</Nav.Link>
                             <Nav.Link href="/records" className={window.location.href.includes('records') ? "selected" : ""}>Rapoarte</Nav.Link>
+                            <Nav.Link href="/ask" className={window.location.href.includes('ask') ? "selected" : ""}>Intrebari</Nav.Link>
                             <Nav.Link onClick={() => auth.logout()}>Logout</Nav.Link>
 
                         </>

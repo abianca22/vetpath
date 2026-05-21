@@ -33,6 +33,7 @@ export interface PetDTO {
     owner: UserDTO;
     weight: number;
     photoUrl: string | null;
+    gender: string;
 }
 
 export interface ClinicDTO {

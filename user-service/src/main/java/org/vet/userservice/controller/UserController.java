@@ -149,11 +149,11 @@ public class UserController {
         return ResponseEntity.ok().body(userDTO);
     }
 
-    @GetMapping("/veterinarians")
-    public ResponseEntity<List<UserDTO>> getVeterinarians() {
+    @GetMapping("/admin-vet")
+    public ResponseEntity<List<UserDTO>> getVeterinariansAndAdmins() {
         List<User> users = userService.getAllUsers();
         List<UserDTO> vets = users.stream()
-                .filter(user -> user.getRoles().contains(roleService.findByName("VETERINARIAN")))
+                .filter(user -> (user.getRoles().contains(roleService.findByName("VETERINARIAN")) || user.getRoles().contains(roleService.findByName("ADMIN"))))
                 .map(userMapper::toUserDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok().body(vets);
@@ -181,8 +181,8 @@ public class UserController {
         User user = userService.getUserByUsername(username);
         User currentUser = userService.getUserById(decodeJWT(jwt).getId());
         if (currentUser.getRoles().contains(roleService.findByName("PET_OWNER"))) {
-            if (!user.getRoles().contains(roleService.findByName("VETERINARIAN")) && !user.getId().equals(currentUser.getId())) {
-                throw new AccessDeniedException("Acces interzis: utilizatorul nu este un veterinar și nu este proprietarul contului");
+            if (!user.getRoles().contains(roleService.findByName("VETERINARIAN")) && !user.getRoles().contains(roleService.findByName("ADMIN")) && !user.getId().equals(currentUser.getId())) {
+                throw new AccessDeniedException("Clientii pot vizualiza doar profilele membrilor personalului platformei!");
             }
         }
         if (user == null) {

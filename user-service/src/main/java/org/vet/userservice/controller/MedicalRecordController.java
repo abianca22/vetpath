@@ -16,6 +16,7 @@ import org.vet.userservice.model.entity.Appointment;
 import org.vet.userservice.model.entity.MedicalRecord;
 import org.vet.userservice.model.entity.Pet;
 import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.enums.AppointmentStatus;
 import org.vet.userservice.model.mapper.AppointmentMapper;
 import org.vet.userservice.model.mapper.MedicalRecordMapper;
 import org.vet.userservice.model.mapper.UserMapper;
@@ -23,7 +24,10 @@ import org.vet.userservice.other.UsefulFunctions;
 import org.vet.userservice.service.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -103,21 +107,57 @@ public class MedicalRecordController {
     public ResponseEntity<?> deleteRecord(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer id) {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         MedicalRecord record = recordService.findById(id);
-        if (!record.getAppointment().getVet().getId().equals(currentUserDTO.getId()) && !usefulFunctions.isAdmin(currentUserDTO)) {
+        if (record.getAppointment() != null && record.getAppointment().getVet() != null && !record.getAppointment().getVet().getId().equals(currentUserDTO.getId()) && !usefulFunctions.isAdmin(currentUserDTO)) {
             throw new AccessDeniedException("Doar adminul sau medicul care a intocmit raportul poate sterge inregistrarea!");
         }
-        if (!record.getAppointment().getClinic().getVets().contains(userService.getUserById(currentUserDTO.getId()))) {
-            throw new AccessDeniedException("Veteerinarul nu mai apartine clinicii la care s-a efectuat consultatia!");
+        else if (record.getAppointment() == null && record.getVet() != null && !record.getVet().getId().equals(currentUserDTO.getId()) && !usefulFunctions.isAdmin(currentUserDTO)) {
+            throw new AccessDeniedException("Doar adminul sau medicul care a intocmit raportul poate sterge inregistrarea!");
+        }
+        if (record.getAppointment() != null && record.getAppointment().getClinic() != null && !record.getAppointment().getClinic().getVets().contains(userService.getUserById(currentUserDTO.getId()))) {
+            throw new AccessDeniedException("Veterinarul nu mai apartine clinicii la care s-a efectuat consultatia!");
         }
         recordService.deleteRecord(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/all")
-    public ResponseEntity<?> getAllRecords(@RequestParam(value = "owner", required = false) String owner) {
+    public ResponseEntity<?> getAllRecords(@RequestParam(value = "vet") Optional<String> vet,
+                                           @RequestParam(value = "owner") Optional<String> owner,
+                                           @RequestParam(value = "pet") Optional<String> pet,
+                                           @RequestParam(value="startDate") Optional<String> startDate,
+                                           @RequestParam(value = "endDate") Optional<String> endDate,
+                                           @RequestParam(value = "generated") Optional<Boolean> generated
+    ) {
         List<MedicalRecord> allRecords = recordService.findAllRecords();
-        if (owner != null && !owner.isEmpty()) {
-            allRecords = allRecords.stream().filter(record -> record.getPet().getOwner().equals(userService.getUserByUsername(owner.trim()))).toList();
+        if (pet.isPresent()) {
+            allRecords = allRecords.stream().filter(record -> record.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
+        }
+        if (owner.isPresent() && !owner.get().isEmpty()) {
+            allRecords = allRecords.stream().filter(record -> (
+                    record.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())
+                    || record.getPet().getOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase())
+                    || record.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
+            )).toList();
+        }
+        if (vet.isPresent() && !vet.get().isEmpty()) {
+            allRecords = allRecords.stream().filter(record -> (
+                    record.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase())
+                            || record.getVet().getFirstName().toLowerCase().contains(vet.get().toLowerCase())
+                            || record.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase())
+            )).toList();
+        }
+        if (startDate.isPresent()) {
+            List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            allRecords = allRecords.stream().filter(record -> record.getRecordDate().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), 0, 0))).toList();
+        }
+        if (endDate.isPresent()) {
+            List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            allRecords = allRecords.stream().filter(record -> record.getRecordDate().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), 23, 59))).toList();
+        }
+        if (generated.isPresent()) {
+            if (generated.get()) {
+                allRecords = allRecords.stream().filter(record -> record.getAppointment() == null).toList();
+            }
         }
         return ResponseEntity.ok().body(allRecords.stream().map(record -> recordMapper.toRecordDTO(record)).toList());
     }
@@ -133,16 +173,38 @@ public class MedicalRecordController {
     }
 
     @GetMapping("/vet/{id}")
-    public ResponseEntity<?> getAllRecordsByVet(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) {
+    public ResponseEntity<?> getAllRecordsByVet(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam(value="pet") Optional<String> pet, @RequestParam(value="owner") Optional<String> owner, @RequestParam(value="startDate") Optional<String> startDate, @RequestParam(value = "endDate") Optional<String> endDate, @RequestParam(value = "generated") Optional<Boolean> generated) {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         User vet = userService.getUserById(id);
+        List<MedicalRecord> records = recordService.findAllByVet(vet);
         if (!usefulFunctions.isAdmin(currentUserDTO) && !usefulFunctions.isVet(currentUserDTO)) {
             throw new AccessDeniedException("Doar adminul si medicii veterinari pot vizualiza rapoartele medicale intocmite de acest veterinar!");
         }
-        return ResponseEntity.ok().body(recordService.findAllByVet(vet).stream().map(recordMapper::toRecordDTO).toList());
+        if (pet.isPresent()) {
+            records = records.stream().filter(record -> record.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
+        }
+        if (owner.isPresent()) {
+            records = records.stream().filter(record -> (
+                    record.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())
+                        || record.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
+                        || record.getPet().getOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase()))
+            ).toList();
+        }
+        if (startDate.isPresent()) {
+            List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            records = records.stream().filter(record -> record.getRecordDate().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), 0, 0))).toList();
+        }
+        if (endDate.isPresent()) {
+            List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            records = records.stream().filter(record -> record.getRecordDate().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), 23, 59))).toList();
+        }
+        if (generated.isPresent()) {
+            if (generated.get()) {
+               records = records.stream().filter(record -> record.getAppointment() == null).toList();
+            }
+        }
+        return ResponseEntity.ok().body(records.stream().map(record -> recordMapper.toRecordDTO(record)).toList());
     }
-
-
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateRecord(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer id, @RequestBody @Valid MedicalRecordDTO recordDTO) {
@@ -154,7 +216,7 @@ public class MedicalRecordController {
             throw new AccessDeniedException("Doar adminul sau veterinarul care a intocmit raportul il poate edita!");
         }
         User user = userService.getUserById(currentUserDTO.getId());
-        if (!user.getClinics().contains(oldRecord.getAppointment().getClinic())) {
+        if (oldRecord.getAppointment() != null && oldRecord.getAppointment().getClinic() != null && !user.getClinics().contains(oldRecord.getAppointment().getClinic())) {
             throw new AccessDeniedException("Veterinarul asociat nu mai apartine clinicii la care a avut loc consultatia!");
         }
         return ResponseEntity.ok().body(recordMapper.toRecordDTO(recordService.updateRecord(record)));

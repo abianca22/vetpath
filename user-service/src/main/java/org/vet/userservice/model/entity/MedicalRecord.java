@@ -31,6 +31,7 @@ public class MedicalRecord {
     @JoinColumn(name = "vet_id")
     private User vet;
 
+    @Column(columnDefinition = "TEXT")
     private String diagnosis;
 
     private String treatment;
@@ -44,4 +45,8 @@ public class MedicalRecord {
     @JoinColumn(name = "appointment_id")
     @JsonManagedReference
     private Appointment appointment;
+
+    @OneToOne(mappedBy = "medicalRecord")
+    @JsonBackReference
+    private ChatEntry chatEntry;
 }

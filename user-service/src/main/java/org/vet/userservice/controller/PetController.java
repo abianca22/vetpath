@@ -17,17 +17,20 @@ import org.vet.userservice.model.dto.PetTypeDTO;
 import org.vet.userservice.model.entity.Breed;
 import org.vet.userservice.model.entity.Pet;
 import org.vet.userservice.model.entity.PetType;
+import org.vet.userservice.model.entity.User;
 import org.vet.userservice.model.enums.PetGender;
 import org.vet.userservice.model.mapper.BreedMapper;
 import org.vet.userservice.model.mapper.PetMapper;
 import org.vet.userservice.model.mapper.PetTypeMapper;
 import org.vet.userservice.other.UsefulFunctions;
+import org.vet.userservice.repository.BreedRepository;
 import org.vet.userservice.service.*;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/pets")
@@ -60,6 +63,7 @@ public class PetController {
     private BreedMapper breedMapper;
     @Autowired
     private MedicalRecordService medicalRecordService;
+    private BreedRepository breedRepository;
 
     @GetMapping("/user/{username}/{petId}")
     public ResponseEntity<?> getUsersPet(@PathVariable String username, @PathVariable Integer petId) {
@@ -90,6 +94,29 @@ public class PetController {
         List<Pet> pets = petService.filterOwnerPetByName(user, petSearchString);
         List<PetDTO> petDTOs = pets.stream().map(pet -> petMapper.toPetDTO(pet)).toList();
         return ResponseEntity.ok().body(petDTOs);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'VETERINARIAN')")
+    @GetMapping
+    public ResponseEntity<?> getPets(@RequestParam(value = "owner") Optional<String> owner,
+                                     @RequestParam(value = "name") Optional<String> name,
+                                     @RequestParam(value = "breed") Optional<Integer> breedId,
+                                     @RequestParam(value = "type") Optional<Integer> typeId) {
+        List<Pet> pets = petService.getAllPets();
+        if (name.isPresent()) {
+            pets = petService.searchByString(name.get());
+        }
+        if (owner.isPresent()) {
+            List<User> owners = userService.searchByString(owner.get());
+            pets = pets.stream().filter(pet -> owners.contains(pet.getOwner())).toList();
+        }
+        if (breedId.isPresent()) {
+            pets = pets.stream().filter(pet -> pet.getBreed().getId().equals(breedId.get())).toList();
+        }
+        if (typeId.isPresent()) {
+            pets = pets.stream().filter(pet -> pet.getBreed().getPetType().getId().equals(typeId.get())).toList();
+        }
+        return ResponseEntity.ok().body(pets.stream().map(pet -> petMapper.toPetDTO(pet)).toList());
     }
 
     @PostMapping("/add-pet")

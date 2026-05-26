@@ -32,4 +32,34 @@ public class DiseasePredictionBeanService {
     public List<DiseasePredictionBean> saveAllDiseasePredictionBeans(List<DiseasePredictionBean> diseasePredictionBeans) {
         return diseasePredictionBeanRepository.saveAll(diseasePredictionBeans);
     }
+
+    public List<DiseasePredictionBean> findByKeyword(String keyword) {
+        var results = diseasePredictionBeanRepository.findByKeyword(keyword);
+        return results.stream().filter(bean -> {
+           if (keyword.trim().equalsIgnoreCase("vomiting") && bean.getVomiting().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("skin lesion") && bean.getSkinLesions().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("nasal discharge") && bean.getNasalDischarge().equalsIgnoreCase("no")) {
+                return false;
+           } else if (keyword.trim().toLowerCase().contains("lameness") && bean.getLameness().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("labored breathing") && bean.getLabored_breathing().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("eye discharge") && bean.getEyeDischarge().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("diarrhea") && bean.getDiarrhea().equalsIgnoreCase("no")) {
+               return false;
+           } else if (keyword.trim().toLowerCase().contains("cough") && bean.getCoughing().equalsIgnoreCase("no")) {
+               return false;
+           } else if ((keyword.trim().toLowerCase().contains("appetite loss") || keyword.trim().toLowerCase().contains("loss of appetite")) && bean.getAppetiteLoss().equalsIgnoreCase("no")) {
+               return false;
+           }
+           return true;
+        }).toList();
+    }
+
+    public DiseasePredictionBean update(DiseasePredictionBean diseasePredictionBean) {
+        return diseasePredictionBeanRepository.save(diseasePredictionBean);
+    }
 }

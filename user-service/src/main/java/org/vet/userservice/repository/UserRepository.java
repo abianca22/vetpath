@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, String> {
     public List<User> getUsersByPendingRequest(boolean pendingRequest);
+    public List<User> findAllByUsernameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(String username, String lastName, String firstName);
 }

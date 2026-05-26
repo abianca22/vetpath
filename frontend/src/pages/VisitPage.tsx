@@ -1,9 +1,9 @@
 import {useContext, useEffect, useState} from "react";
 import {AuthContext} from "../api/authContext.ts";
-import {Badge, Card, Col, Container, Row, Table} from "react-bootstrap";
+import {Badge, Button, Card, Col, Container, Row, Table} from "react-bootstrap";
 import {useNavigate, useParams} from "react-router-dom";
 import {findUserByUsername, getClinicsByVeterinarian} from "../api/api.ts";
-import {isPetOwner, isVeterinarian} from "../api/roles.ts";
+import {isAdmin, isPetOwner, isVeterinarian} from "../api/roles.ts";
 
 
 export default function Visit() {
@@ -86,15 +86,23 @@ export default function Visit() {
                                         <td className="fw-medium text-secondary">Prenume:</td>
                                         <td><span>{visitedUser.firstName ? visitedUser.firstName : ""}</span></td>
                                     </tr>
-                                        <tr>
-                                            <td className="fw-medium text-secondary">Clinici:</td>
-                                            <td>
-                                                {isVeterinarian(visitedUser.roles) && clinics !== null && clinics.length !== 0 &&
-                                                    clinics.map(((c, i) => <p key={c.id}><span>{c.name}</span>{(i !== (clinics.length - 1)) && <br/>}</p>))}
-                                            </td>
-                                        </tr>
+                                   {
+                                        isVeterinarian(visitedUser.roles) && clinics !== null && clinics.length !== 0 &&
+                                            <tr>
+                                                <td className="fw-medium text-secondary">Clinici:</td>
+                                                <td>
+                                                    {
+                                                    clinics.map((c, i) => <p key={c.id}><span>{c.name}</span>{(i !== (clinics.length - 1)) && <br/>}</p>)
+                                                    }
+                                                </td>
+                                            </tr>
+                                   }
                                     </tbody>
                                 </Table>
+                                {
+                                    (isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles)) &&
+                                    <Button variant="secondary" className="mt-2" href={`/pets/${visitedUser.username}`}>Animale asociate</Button>
+                                }
                             </Card.Body>
                         </Card>
                         <br/>

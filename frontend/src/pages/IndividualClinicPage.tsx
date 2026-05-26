@@ -140,7 +140,9 @@ export default function IndividualClinic() {
                                     <Col xs={6}>
                                         {clinic.vets && clinic.vets.length > 0 && clinic.vets.map(vet => (
                                             <div key={vet.id} className="text-center">
-                                                <span>{vet.firstName} {vet.lastName}</span>
+                                                <a href={`/user/${vet.username}`}>
+                                                    <span>{vet.firstName} {vet.lastName}</span>
+                                                </a>
                                                 </div>
                                         ))}
                                     </Col>

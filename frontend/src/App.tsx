@@ -26,6 +26,9 @@ import AppointmentDetails from "./pages/AppointmentDetailsPage.tsx";
 import RecordDetails from "./pages/RecordDetailsPage.tsx";
 import RecordsList from "./pages/MedicalRecordsListPage.tsx";
 import Chat from "./pages/SymptomsChatPage.tsx";
+import ChatEntries from "./pages/ChatEntriesPage.tsx";
+import QuestionResponse from "./pages/QuestionResponsePage.tsx";
+import Pets from "./pages/PetsPage.tsx";
 
 function App() {
     const auth = useContext(AuthContext);
@@ -49,6 +52,7 @@ function App() {
                         <Route path="/pets/types" element={<PetTypes/>}/>
                         <Route path="/pets/breeds" element={<Breeds/>}/>
                         <Route path="/pets/types/:typeName/breeds" element={<Breeds/>}/>
+                        <Route path="/pets" element={<PrivateRoute element={Pets} roles={[admin, veterinarian]}/>}></Route>
                         <Route path="/clinics" element={<Clinics/>}/>
                         <Route path="/clinics/:id" element={<IndividualClinic/>}/>
                         <Route path="/slots/:username" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
@@ -58,6 +62,9 @@ function App() {
                         <Route path="/records/details" element={<PrivateRoute element={RecordDetails} roles={roles}/>}/>
                         <Route path="/records" element={<PrivateRoute element={RecordsList} roles={roles}/>} />
                         <Route path="/ask" element={<PrivateRoute element={Chat} roles={roles}/>} />
+                        <Route path="/ask/history/:username" element={<PrivateRoute element={ChatEntries} roles={roles}/>} />
+                        <Route path="/ask/history/:username/details" element={<PrivateRoute element={QuestionResponse} roles={roles}/>} />
+
                     </Routes>
             </div>
         </>

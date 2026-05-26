@@ -24,7 +24,16 @@
 //   return res.json().catch(() => null);
 // }
 
-import type {AppointmentDTO, BreedDTO, ClinicDTO, MedicalRecordDTO, PetDTO, TypeDTO, UserDTO} from "../types.ts";
+import type {
+    AppointmentDTO,
+    BreedDTO,
+    ChatEntryDTO,
+    ClinicDTO,
+    MedicalRecordDTO,
+    PetDTO,
+    TypeDTO,
+    UserDTO
+} from "../types.ts";
 
 export const getUserInfo = async (token): Promise<UserDTO> => {
   const res = await fetch("http://localhost:8081/api/users/users/me", {
@@ -77,7 +86,7 @@ export const getAllUsers = async (token): Promise<UserDTO[]> => {
 }
 
 export const getAllVeterinarians = async (token): Promise<Array<UserDTO>> => {
-    const res = await fetch("http://localhost:8081/api/users/veterinarians", {
+    const res = await fetch("http://localhost:8081/api/users/admin-vet", {
         headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -139,7 +148,7 @@ export const getAllBreeds = async(): Promise<Array<BreedDTO>> => {
     return await res.json();
 }
 
-export const getBreedsByType = async(typeId): Promise<BreedDTO> => {
+export const getBreedsByType = async(typeId): Promise<Array<BreedDTO>> => {
     const res = await fetch(`http://localhost:8081/api/pets/types/${typeId}/breeds`, {
         method: "GET"
     });
@@ -599,8 +608,24 @@ export const getRecordsByPet = async(token, petId): Promise<Array<MedicalRecordD
     return await res.json();
 }
 
-export const getRecordsByVet = async(token, vetId): Promise<Array<MedicalRecordDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/records/vet/${vetId}`, {
+export const getRecordsByVet = async(token, vetId, owner, pet, checked, startDate, endDate): Promise<Array<MedicalRecordDTO>> => {
+    const requestParams = []
+    if (startDate !== null && startDate !== undefined && startDate.trim() !== '') {
+        requestParams.push(`startDate=${startDate}`);
+    }
+    if (endDate !== null && endDate !== undefined && endDate.trim() !== '') {
+        requestParams.push(`endDate=${endDate}`);
+    }
+    if (owner !== null && owner !== undefined && owner.trim() !== '') {
+        requestParams.push(`owner=${owner.trim()}`);
+    }
+    if (pet !== null && pet !== undefined && pet.trim() !== '') {
+        requestParams.push(`pet=${pet.trim()}`);
+    }
+    if (checked) {
+        requestParams.push(`generated=${checked}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/records/vet/${vetId}${requestParams.length > 0 ? `?${requestParams.join('&')}` : ''}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`
@@ -613,8 +638,27 @@ export const getRecordsByVet = async(token, vetId): Promise<Array<MedicalRecordD
     return await res.json();
 }
 
-export const getRecords = async(token, owner): Promise<Array<MedicalRecordDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/records/all${owner !== null && owner !== undefined ? '?owner=' + owner : ''}`, {
+export const getRecords = async(token, vet, owner, pet, checked, startDate, endDate): Promise<Array<MedicalRecordDTO>> => {
+    const requestParams = []
+    if (startDate !== null && startDate !== undefined && startDate.trim() !== '') {
+        requestParams.push(`startDate=${startDate}`);
+    }
+    if (endDate !== null && endDate !== undefined && endDate.trim() !== '') {
+        requestParams.push(`endDate=${endDate}`);
+    }
+    if (vet !== null && vet !== undefined && vet.trim() !== '') {
+        requestParams.push(`vet=${vet.trim()}`);
+    }
+    if (owner !== null && owner !== undefined && owner.trim() !== '') {
+        requestParams.push(`owner=${owner.trim()}`);
+    }
+    if (pet !== null && pet !== undefined && pet.trim() !== '') {
+        requestParams.push(`pet=${pet.trim()}`);
+    }
+    if (checked) {
+        requestParams.push(`generated=${checked}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/records/all${requestParams.length > 0 ? `?${requestParams.join('&')}` : ''}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`
@@ -671,6 +715,78 @@ export const sendQuestion = async(token, question, petId): Promise<string> => {
 
     return await res.text();
 }
+
+export const fetchChatEntries = async(token, username): Promise<Array<ChatEntryDTO>> => {
+    const res = await fetch(`http://localhost:8081/chat/owner/${username}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const fetchQuestion = async(token, questionId): Promise<ChatEntryDTO> => {
+    const res = await fetch(`http://localhost:8081/chat/${questionId}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const deleteQuestion = async(token, questionId): Promise<void> => {
+    const res = await fetch(`http://localhost:8081/chat/${questionId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+}
+
+export const filterPets = async(token, owner, name, type, breed): Promise<Array<PetDTO>> => {
+    const requestParams = [];
+    if (owner !== null) {
+        requestParams.push(`owner=${owner.trim()}`);
+    }
+    if (name !==  null) {
+        requestParams.push(`name=${name.trim()}`);
+    }
+    if (type !==  null) {
+        requestParams.push(`type=${type}`);
+    }
+    if (breed !==  null) {
+        requestParams.push(`breed=${breed}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/pets${requestParams.length !== 0 ? `?${requestParams.join('&')}` : ''}`,  {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
 
 // export const fetchAppointments = async(token, startDate, endDate, petId, vetName, clinicId, status, owner): Promise<Array<AppointmentDTO>> =>{
 //     const res = await fetch(`http://localhost:8081/api/appointments${startDate || endDate || petId !== null || vetName !== null || clinicId !== null || status !== null ?  '?' : ''}startDate=${startDate}&endDate=${endDate}&pet=${petId}&vet=${vetName}&clinic=${clinicId}&status=${status === 'BOOKED'}&owner=${owner}`, {

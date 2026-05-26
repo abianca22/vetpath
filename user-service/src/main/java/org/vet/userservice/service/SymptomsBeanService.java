@@ -34,6 +34,10 @@ public class SymptomsBeanService {
         return symptomsBeanRepository.saveAll(symptomsBeans);
     }
 
+    public List<SymptomsBean> findByKeyword(String keyword) {
+        return symptomsBeanRepository.findByKeyword(keyword);
+    }
+
     public SymptomsBean update(SymptomsBean symptomsBean) {
         return symptomsBeanRepository.save(symptomsBean);
     }

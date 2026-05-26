@@ -45,6 +45,7 @@ export default function Chat() {
             console.log(selectedPet);
         }
         catch (err) {
+            setLoading(false);
             setError(err);
         }
     }
@@ -69,7 +70,8 @@ export default function Chat() {
                                 <Form.Label>Introduceți mai jos simptomele pe care le-ați observat:</Form.Label>
                                 <Form.Control type="text" as="textarea" rows={2} name="question"required></Form.Control>
                             </Form.Group>
-                            <Form.Group className="text-end mt-3">
+                            <Form.Group className="d-flex justify-content-between mt-2">
+                                <Button variant="primary" type="button" disabled={loading} href={`/ask/history/${auth.user.username}`}>Istoric intrebari</Button>
                                 <Button variant="secondary" type="submit" className="text-end" disabled={loading}>Trimitere</Button>
                             </Form.Group>
                         </Form>

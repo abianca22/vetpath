@@ -10,6 +10,7 @@ import {Button, Card, Col, Container, Form, FormControl, Row} from "react-bootst
 import {isAdmin} from "../api/roles.ts";
 import MedicalRecordForm from "./MedicalRecordForm.tsx";
 import Confirm from "../components/Confirm.tsx";
+import FormatText from "../FormatText.tsx";
 
 export default function RecordDetails() {
     const auth = useContext(AuthContext);
@@ -78,7 +79,7 @@ export default function RecordDetails() {
         {error && <p className="text-danger">{error}</p>}
         <Container className="d-flex justify-content-center align-items-start" style={{paddingTop: '2.5rem'}}>
             <Row className="w-100 justify-content-center">
-                <Col xs={12} md={8} lg={6}>
+                <Col className="col-10">
                     { error && <p className="text-danger text-center"><small>{error}</small></p> }
 
                     { record ? (
@@ -89,12 +90,14 @@ export default function RecordDetails() {
                                         <h5>Raport medical</h5>
                                     </div>
                                     <hr />
+                                    { record.appointment &&
                                     <Row className="mt-3">
                                         <Col xs={6} className="fw-bold">Data programarii:</Col>
                                         <Col xs={6}>
                                             {record.appointment?.slot}
                                         </Col>
                                     </Row>
+                                    }
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Data adaugarii raportului:</Col>
                                     <Col xs={6}>
@@ -116,24 +119,29 @@ export default function RecordDetails() {
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Simptome:</Col>
                                     <Col xs={6} className="d-flex justify-content-start">
-                                        <Form.Group controlId="symptoms">
-                                            <FormControl name="symptoms" type="text" as="textarea" rows={3} defaultValue={record.symptoms} disabled={!isActive}></FormControl>
+                                        <Form.Group controlId="symptoms" className="w-100">
+                                            <FormControl name="symptoms" type="text" as="textarea" rows={(record.symptoms.split(" ").length  + record.symptoms.split("\n").length) / 3} defaultValue={record.symptoms} disabled={!isActive}></FormControl>
                                         </Form.Group>
                                     </Col>
                                 </Row>
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Diagnostic:</Col>
                                     <Col xs={6} className="d-flex justify-content-start">
-                                        <Form.Group controlId="diagnosis">
-                                            <FormControl name="diagnosis" type="text" as="textarea" rows={3} defaultValue={record.diagnosis} disabled={!isActive}></FormControl>
-                                        </Form.Group>
+                                        { isActive ?
+                                        <Form.Group controlId="diagnosis" className="w-100">
+                                            <FormControl name="diagnosis" type="text" as="textarea" rows={(record.diagnosis.split(" ").length + record.diagnosis.split("\n").length) / 6} defaultValue={record.diagnosis} disabled={!isActive}></FormControl>
+                                        </Form.Group> :
+                                            <div>
+                                            <FormatText message={record.diagnosis}></FormatText>
+                                            </div>
+                                        }
                                     </Col>
                                 </Row>
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Tratament/Recomandări:</Col>
                                     <Col xs={6} className="d-flex justify-content-start">
-                                        <Form.Group controlId="treatment">
-                                            <FormControl name="treatment" type="text" as="textarea" rows={3} defaultValue={record.treatment} disabled={!isActive}></FormControl>
+                                            <Form.Group controlId="treatment" className="w-100">
+                                            <FormControl name="treatment" type="text" as="textarea" rows={(record.treatment.split(" ").length + record.treatment.split("\n").length) / 6} defaultValue={record.treatment} disabled={!isActive}></FormControl>
                                         </Form.Group>
                                     </Col>
                                 </Row>

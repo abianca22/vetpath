@@ -29,4 +29,12 @@ public class SymptomsBean {
     @CsvBindByPosition(position = 2)
     private String recordType;
 
+    @Override
+    public String toString() {
+        return "SymptomsBean: " +
+                "notes='" + notes + '\'' +
+                ", condition='" + condition + '\'' +
+                ", recordType='" + recordType + '\'' +
+                '\n';
+    }
 }

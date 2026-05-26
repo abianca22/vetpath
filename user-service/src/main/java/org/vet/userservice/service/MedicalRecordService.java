@@ -1,12 +1,10 @@
 package org.vet.userservice.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.metrics.DefaultRepositoryTagsProvider;
 import org.springframework.stereotype.Service;
 import org.vet.userservice.exception.NoDataFoundException;
-import org.vet.userservice.model.entity.Appointment;
-import org.vet.userservice.model.entity.MedicalRecord;
-import org.vet.userservice.model.entity.Pet;
-import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.entity.*;
 import org.vet.userservice.repository.AppointmentRepository;
 import org.vet.userservice.repository.MedicalRecordRepository;
 
@@ -20,6 +18,9 @@ public class MedicalRecordService {
     private AppointmentService appointmentService;
     @Autowired
     private PetService petService;
+    @Autowired
+    private ChatEntryService chatEntryService;
+    private DefaultRepositoryTagsProvider repositoryTagsProvider;
 
 
     public MedicalRecord findById(Integer id) {
@@ -31,7 +32,11 @@ public class MedicalRecordService {
     }
 
     public void deleteRecord(Integer id) {
-        appointmentService.clearRecord(findById(id).getAppointment().getId());
+        MedicalRecord record = findById(id);
+        if (record.getAppointment() != null) {
+            appointmentService.clearRecord(record.getAppointment().getId());
+        }
+        chatEntryService.clearRecord(findById(id).getChatEntry() != null ? findById(id).getChatEntry().getId() : null);
         recordRepository.deleteById(id);
     }
 
@@ -55,15 +60,19 @@ public class MedicalRecordService {
         return recordRepository.findAllByVet(vet);
     }
 
+    public List<MedicalRecord> findAllByVetAndPet(User vet, Pet pet) {
+        return recordRepository.findAllByVetAndPet(vet, pet);
+    }
+
     public MedicalRecord updateRecord(MedicalRecord record) {
         MedicalRecord oldRecord = findById(record.getId());
-        if (!record.getDiagnosis().trim().equals(oldRecord.getDiagnosis().trim())) {
+        if (record.getDiagnosis() != null && !record.getDiagnosis().equals(oldRecord.getDiagnosis())) {
             oldRecord.setDiagnosis(record.getDiagnosis().trim());
         }
-        if (!record.getSymptoms().trim().equals(oldRecord.getSymptoms().trim())) {
+        if (record.getSymptoms() != null && !record.getSymptoms().equals(oldRecord.getSymptoms())) {
             oldRecord.setSymptoms(record.getSymptoms().trim());
         }
-        if (!record.getTreatment().trim().equals(oldRecord.getTreatment().trim())) {
+        if (record.getTreatment() != null && !record.getTreatment().equals(oldRecord.getTreatment())) {
             oldRecord.setTreatment(record.getTreatment().trim());
         }
         return recordRepository.save(oldRecord);

@@ -7,7 +7,7 @@ export default function Confirm(props) {
                 <Modal.Title>Confirmare
                 </Modal.Title>
             </Modal.Header>
-                <Modal.Body className="text-center">
+                <Modal.Body className="text-start">
                     <p>{props.message}</p>
                 </Modal.Body>
                 <Modal.Footer>

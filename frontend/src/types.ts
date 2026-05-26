@@ -70,3 +70,13 @@ export interface MedicalRecordDTO {
     treatment: string;
     recordDate: string;
 }
+
+export interface ChatEntryDTO {
+    id: number;
+    userMessage: string;
+    botResponse: string;
+    symptoms: string;
+    approvedBy: UserDTO;
+    pet: PetDTO;
+    timestamp: string;
+}

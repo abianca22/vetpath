@@ -22,4 +22,5 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, In
         LIMIT :k
 """)
     List<MedicalRecord> findTopKMostRecentByPet(Pet pet, Integer k);
+    List<MedicalRecord> findAllByVetAndPet(User vet, Pet pet);
 }

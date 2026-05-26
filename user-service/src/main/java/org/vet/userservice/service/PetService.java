@@ -66,4 +66,12 @@ public class PetService {
     public Pet getPetById(Integer id) {
         return petRepository.findById(id).orElseThrow(() -> new NoDataFoundException("Nu a fost gasit niciun animal de companie cu id-ul " + id));
     }
+
+    public List<Pet> getAllPets() {
+        return petRepository.findAll();
+    }
+
+    public List<Pet> searchByString(String keyword) {
+        return petRepository.findAllByNameContainingIgnoreCase(keyword);
+    }
 }

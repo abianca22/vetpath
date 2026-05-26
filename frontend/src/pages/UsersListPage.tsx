@@ -1,8 +1,8 @@
 import {useContext, useEffect, useState} from "react";
 import {AuthContext} from "../api/authContext.ts";
 import {Button, Col, Container, Form, Row, Table} from "react-bootstrap";
-import {changeRole, getAllUsers} from "../api/api.ts";
-import roles, {isAdmin, isVeterinarian} from "../api/roles.ts";
+import {changeRole, getAllUsers, getAllVeterinarians} from "../api/api.ts";
+import roles, {isAdmin, isPetOwner, isVeterinarian} from "../api/roles.ts";
 import {useNavigate} from "react-router-dom";
 
 
@@ -22,8 +22,14 @@ export default function UsersList() {
 
     useEffect(() => {
         const getUsers = async () => {
-            const res = await getAllUsers(auth.token);
-            setData(res);
+            if (isPetOwner(auth.user.roles)) {
+                const res = await getAllVeterinarians(auth.token);
+                setData(res);
+            }
+            else if (isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles)) {
+                const res = await getAllUsers(auth.token);
+                setData(res);
+            }
         };
         getUsers();
     }, []);
@@ -31,10 +37,13 @@ export default function UsersList() {
     return (
         <>
             <Container className="d-flex flex-grow-1" fluid>
-            { isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles) ?
             <Row className="align-items-start h-100 w-100 justify-content-center">
                 <Col className="col-9">
-                    <h1 className="m-5 text-center">Utilizatori VetPath</h1>
+                    {
+                        isPetOwner(auth.user.roles) ?
+                        <h1 className="m-5 text-center">Personal VetPath</h1> :
+                        <h1 className="m-5 text-center">Utilizatori VetPath</h1>
+                    }
                     <div className="table-responsive text-center">
                         <Table className="mt-5">
                             <thead>
@@ -94,46 +103,6 @@ export default function UsersList() {
                     </div>
                 </Col>
             </Row>
-            :
-            <>
-                {/* stapanii de animale pot vedea doar veterinarii */}
-                <Row className="align-items-start h-100 w-100 justify-content-center">
-                    <Col className="col-9">
-                        <h1 className="text-center m-5">Veterinari VetPath</h1>
-                        <div className="table-responsive text-center">
-                            <Table className="mt-5">
-                                <thead>
-                                <tr>
-                                    <th>
-                                        Username
-                                    </th>
-                                    <th>
-                                        Actiuni
-                                    </th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {
-                                    data && data.length ?
-                                        data.map(user => (
-                                            <tr key={user.username}>
-                                                <td>{user.username}</td>
-                                                <td><Button variant="success" onClick={() => {
-                                                    navigate(`/user/${user.username}`);
-                                                }}>Detalii</Button></td>
-                                            </tr>
-                                        )) :
-                                        <tr>
-                                            <td colSpan={3} className="text-center">Nu exista rezultate</td>
-                                        </tr>
-                                }
-                                </tbody>
-                            </Table>
-                        </div>
-                    </Col>
-                </Row>
-            </>
-            }
             </Container>
         </>
     );

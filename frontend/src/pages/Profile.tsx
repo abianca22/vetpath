@@ -175,6 +175,8 @@ export default function Profile() {
                                     <Button as="a" href="/requests-list" variant="success">Vizualizeaza cereri</Button>
                                 )
                             }
+                            <br/>
+                            <Button variant="secondary" href={`/pets/${auth.user.username}`} className="mt-2">Animalele mele</Button>
                         </Card.Body>
                     </Card>
                     <br/>

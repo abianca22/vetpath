@@ -18,4 +18,6 @@ public interface PetRepository extends JpaRepository<Pet, Integer> {
     @Query("SELECT pet FROM Pet pet WHERE pet.owner = :owner AND (:name LIKE '' or LOWER(pet.name) LIKE LOWER(CONCAT('%', :name, '%')))")
     List<Pet> findAllByOwnerAndName(@Param("owner") User owner, @Param("name") String name);
 
+    List<Pet> findAllByNameContainingIgnoreCase(String keyword);
+
 }

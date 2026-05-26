@@ -107,4 +107,9 @@ public class UserService {
         user.setPendingRequest(false);
         return userRepository.save(user);
     }
+
+    public List<User> searchByString(String keyword) {
+        return userRepository.findAllByUsernameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(keyword, keyword, keyword);
+    }
+
 }

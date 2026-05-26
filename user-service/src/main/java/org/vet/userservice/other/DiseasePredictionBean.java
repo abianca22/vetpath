@@ -86,4 +86,32 @@ public class DiseasePredictionBean {
 
     @CsvBindByPosition(position = 21)
     private String diseasePrediction;
+
+    @Override
+    public String toString() {
+        return "DiseasePrediction: " +
+                "animalType='" + animalType + '\'' +
+                ", breed='" + breed + '\'' +
+                ", age='" + age + '\'' +
+                ", gender='" + gender + '\'' +
+                ", weight='" + weight + '\'' +
+                ", symptom1='" + symptom1 + '\'' +
+                ", symptom2='" + symptom2 + '\'' +
+                ", symptom3='" + symptom3 + '\'' +
+                ", symptom4='" + symptom4 + '\'' +
+                ", duration='" + duration + '\'' +
+                ", appetiteLoss='" + appetiteLoss + '\'' +
+                ", vomiting='" + vomiting + '\'' +
+                ", diarrhea='" + diarrhea + '\'' +
+                ", coughing='" + coughing + '\'' +
+                ", labored_breathing='" + labored_breathing + '\'' +
+                ", lameness='" + lameness + '\'' +
+                ", skinLesions='" + skinLesions + '\'' +
+                ", nasalDischarge='" + nasalDischarge + '\'' +
+                ", eyeDischarge='" + eyeDischarge + '\'' +
+                ", bodyTemperature='" + bodyTemperature + '\'' +
+                ", heartRate='" + heartRate + '\'' +
+                ", diseasePrediction='" + diseasePrediction + '\'' +
+                '\n';
+    }
 }

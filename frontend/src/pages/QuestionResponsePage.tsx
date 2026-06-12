@@ -1,10 +1,10 @@
 import {Button, Card, Col, Container, Row} from "react-bootstrap";
 import {AuthContext} from "../api/authContext.ts";
 import {useContext, useEffect, useState} from "react";
-import {deleteQuestion, fetchQuestion} from "../api/api.ts";
+import {approveResponse, deleteQuestion, fetchQuestion, getRecordsByPet} from "../api/api.ts";
 import {useNavigate, useParams} from "react-router-dom";
 import Confirm from "../components/Confirm.tsx";
-import {isAdmin} from "../api/roles.ts";
+import {isAdmin, isVeterinarian} from "../api/roles.ts";
 import FormatText from "../FormatText.tsx";
 
 export default function QuestionResponse() {
@@ -14,9 +14,27 @@ export default function QuestionResponse() {
     const navigate = useNavigate();
     const params = useParams();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [records, setRecords] = useState([]);
+    const [generated, setGenerated] = useState(false);
+    const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+
+    function closeCreateConfirm() {
+        setShowCreateConfirm(false);
+    }
 
     function closeDeleteConfirm() {
         setShowDeleteConfirm(false);
+    }
+
+    async function generateRecord() {
+        try {
+            await approveResponse(auth.token, entry.id);
+            setGenerated(true);
+        }
+        catch (err) {
+            setError(err.message);
+            console.error(err.message);
+        }
     }
 
     useEffect(() => {
@@ -26,6 +44,20 @@ export default function QuestionResponse() {
                 setEntry(res);
                 console.log(res.timestamp);
                 setError(null);
+                if (res.pet) {
+                    try {
+                        const records = await getRecordsByPet(auth.token, res.pet.id);
+                        const filteredRecords = records.filter(record => record.vet.id === auth.user.id);
+                        setRecords(filteredRecords);
+                        console.log(filteredRecords);
+                        console.log(res);
+                    }
+                    catch(err) {
+                        setError(err.message);
+                        console.error(err.message);
+                        setRecords([]);
+                    }
+                }
             }
             catch(err) {
                 setError(err);
@@ -33,7 +65,7 @@ export default function QuestionResponse() {
             }
         }
         fetchEntry();
-    }, []);
+    }, [generated]);
 
     async function handleDelete() {
         try {
@@ -90,19 +122,35 @@ export default function QuestionResponse() {
                                     <Row className="mt-3">
                                         <label className="fw-bold mb-3">Raspuns:</label>
                                             <div>
-                                                <FormatText message={entry.botResponse}></FormatText>
+                                                <FormatText message={entry?.botResponse}></FormatText>
                                             </div>
                                     </Row>
                                 <hr />
                             </Card.Body>
                             <Card.Footer>
-                                {   (isAdmin(auth.user.roles) || auth.user.username === params.username) &&
+
                                     <Row>
+                                        <Col>
+                                            {
+                                                isVeterinarian(auth.user.roles) && records && records.length > 0 && entry.medicalRecord === null && entry.approvedBy === null &&
+                                                <Button onClick={() => setShowCreateConfirm(true)}>Generare raport</Button>
+                                            }
+                                            {
+                                                (isVeterinarian(auth.user.roles) || (auth.user.id === entry.pet.owner.id)) && entry.medicalRecord !== null &&
+                                                <Button onClick={() => {
+                                                    sessionStorage.setItem("recordId", entry.medicalRecord.id.toString());
+                                                    navigate('/records/details');
+                                                }}>Vizualizare raport</Button>
+                                            }
+                                        </Col>
                                         <Col className="d-flex justify-content-end">
+                                            {
+                                                (isAdmin(auth.user.roles) || auth.user.username === params.username) &&
                                         <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>Stergere</Button>
+                                            }
                                         </Col>
                                     </Row>
-                                }
+
                             </Card.Footer>
                         </Card>
                     ) : (
@@ -114,6 +162,7 @@ export default function QuestionResponse() {
             {/*    setShowModal(false);*/}
             {/*}} close={() => setShowModal(false)} appointment={record?.appointment}/>*/}
             <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti aceasta intrebare din istoric? Va atentionam ca aceasta actiune este iremediabila."/>
+            <Confirm open={showCreateConfirm} close={closeCreateConfirm} confirm={generateRecord} message="Doriti sa generati un raport in baza acestui raspuns?"/>
         </Container>
     </>
 

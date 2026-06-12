@@ -1,8 +1,6 @@
 package org.vet.userservice.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
-import org.slf4j.spi.LocationAwareLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,10 +11,8 @@ import org.vet.userservice.exception.AccessDeniedException;
 import org.vet.userservice.exception.InvalidDataException;
 import org.vet.userservice.exception.NoDataFoundException;
 import org.vet.userservice.model.dto.*;
-import org.vet.userservice.model.entity.Appointment;
-import org.vet.userservice.model.entity.Clinic;
-import org.vet.userservice.model.entity.Pet;
-import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.dto.appointments.AppointmentDTO;
+import org.vet.userservice.model.entity.*;
 import org.vet.userservice.model.enums.AppointmentStatus;
 import org.vet.userservice.model.mapper.AppointmentMapper;
 import org.vet.userservice.model.mapper.UserMapper;
@@ -28,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -45,14 +40,11 @@ public class AppointmentController {
     private UsefulFunctions usefulFunctions;
     @Autowired
     private PetService petService;
-    @Autowired
-    private RoleService roleService;
+
     @Autowired
     private ClinicService clinicService;
-
-    // - creare "rezumat" medical pentru o programare (doar pentru medici, dupa ce programarea a fost confirmata)
-    // - modificare astfel incat atunci cand se confirma din frontend programarea, sa se completeze si sa se trimita un formular cu date precum simptome, diagnostic, tratament. Daca nu sunt completate, tot se creeaza, dar campurile raman goale si "istoricul" o simple asociere cu programarea
-
+    @Autowired
+    private NotificationService notificationService;
 
 
     @PreAuthorize("hasRole('VETERINARIAN')")
@@ -133,6 +125,7 @@ public class AppointmentController {
         if (appointment.getSlot().isBefore(LocalDateTime.now())) {
             throw new AccessDeniedException("Nu se pot programa sloturi care au expirat.");
         }
+        appointment.setCurrentOwner(userService.getUserById(currentUser.getId()));
         appointmentService.addAppointment(appointment, pet);
         return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointment));
     }
@@ -141,13 +134,16 @@ public class AppointmentController {
     public ResponseEntity<?> cancelAppointment(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt, @RequestBody @Valid CancelledAppointmentDTO cancelAppointmentDTO, @RequestParam(value="freeSlot", required = false) Boolean freeSlot) {
         var currentUser = usefulFunctions.decodeJWT(jwt);
         var appointment = appointmentService.getById(id);
-        if(!usefulFunctions.isAdmin(currentUser) && !currentUser.getId().equals(appointment.getPet().getOwner().getId()) && !currentUser.getId().equals(appointment.getVet().getId())) {
+        if(!usefulFunctions.isAdmin(currentUser) && appointment.getCurrentOwner() != null &&
+                !currentUser.getId().equals(appointment.getCurrentOwner().getId()) &&
+                appointment.getVet() != null &&
+                !currentUser.getId().equals(appointment.getVet().getId())) {
             throw new AccessDeniedException("Doar proprietarul animalului, medicul care a creat slotul sau administratorii pot anula aceasta programare.");
         }
         if (appointment.getStatus() != AppointmentStatus.BOOKED) {
             throw new InvalidDataException("Doar programarile rezervate pot fi anulate.");
         }
-        if (currentUser.getId().equals(appointment.getPet().getOwner().getId())) {
+        if (appointment.getCurrentOwner() != null && currentUser.getId().equals(appointment.getCurrentOwner().getId())) {
             freeSlot = true;
         }
         appointment.setCancelledBy(userMapper.toUser(currentUser));
@@ -155,44 +151,88 @@ public class AppointmentController {
         return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointmentService.cancelAppointment(appointment, freeSlot != null && freeSlot)));
     }
 
-    @GetMapping
-    public ResponseEntity<?> getAppointments(@RequestParam(value="pet", required = false) Integer pet,
-                                             @RequestParam(value="vet", required = false) String vet,
-                                             @RequestParam(value="startDate", required = false) String startDate,
-                                             @RequestParam(value="endDate", required = false) String endDate,
-                                             @RequestParam(value="status", required = false) Boolean status,
-                                             @RequestParam(value="cancelledBy", required = false) String cancelledBy,
-                                             @RequestParam(value="owner", required = false) String owner,
-                                             @RequestParam(value="clinic", required = false) Integer clinic,
-                                             @AuthenticationPrincipal Jwt jwt) {
+    @GetMapping("/pet/{petId}")
+    public ResponseEntity<?> getAppointmentsByPet(@PathVariable Integer petId, @AuthenticationPrincipal Jwt jwt) {
         UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
-        if(usefulFunctions.isVet(currentUser) && vet != null && !currentUser.getUsername().equals(vet) && owner != null && !currentUser.getUsername().equals(owner)) {
-            throw new AccessDeniedException("Medicii pot vizualiza doar propriile programari!");
-        }
-        if(usefulFunctions.isPetOwner(currentUser) && owner != null && !currentUser.getUsername().equals(owner)) {
+        Pet pet = petService.getPetById(petId);
+        if(usefulFunctions.isPetOwner(currentUser) && !currentUser.getId().equals(pet.getOwner().getId())) {
             throw new AccessDeniedException("Proprietarii de animale pot vizualiza doar propriile programari!");
         }
-        if(!usefulFunctions.isAdmin(currentUser)) {
-            if(usefulFunctions.isVet(currentUser)) {
-                vet = currentUser.getUsername();
-            }
-            else if (usefulFunctions.isPetOwner(currentUser)) {
-                owner = currentUser.getUsername();
+        return ResponseEntity.ok().body(appointmentService.getAppointments(pet, null, null, null, null, null, null, null).stream().map(appointmentMapper::toAppointmentDTO).toList());
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAppointments(@RequestParam(value="pet") Optional<String> pet,
+                                             @RequestParam(value="vet") Optional<String> vet,
+                                             @RequestParam(value="startDate") Optional<String> startDate,
+                                             @RequestParam(value="endDate") Optional<String> endDate,
+                                             @RequestParam(value="status") Optional<Boolean> status,
+                                             @RequestParam(value="cancelledBy") Optional<String> cancelledBy,
+                                             @RequestParam(value="owner") Optional<String> owner,
+                                             @RequestParam(value="clinic") Optional<Integer> clinic,
+                                             @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        List<Appointment> appointments = new ArrayList<>();
+        if (!usefulFunctions.isAdmin(currentUser)) {
+            if (usefulFunctions.isPetOwner(currentUser)) {
+                appointments = appointmentService.getAppointments(null, null, null, null, null, null, userService.getUserById(currentUser.getId()), null);
+            } else if (usefulFunctions.isVet(currentUser)) {
+                appointments = appointmentService.getAppointments(null, userService.getUserById(currentUser.getId()), null, null, null, null, null, null);
             }
         }
-        Pet dbpet = pet != null ? petService.getPetById(pet) : null;
-        User dbVet = vet != null ? userService.getUserByUsername(vet) : null;
-        User dbCancelledBy = cancelledBy != null ? userService.getUserByUsername(cancelledBy) : null;
-        User dbOwner = owner != null ? userService.getUserByUsername(owner) : null;
-        Clinic dbClinic = clinic != null ? clinicService.getClinicById(clinic) : null;
-        return ResponseEntity.ok().body(appointmentService.getAppointments(dbpet, dbVet, startDate, endDate, status, dbCancelledBy, dbOwner, dbClinic).stream().map(appointmentMapper::toAppointmentDTO).toList());
+        else {
+            appointments = appointmentService.getAppointments(null, null, null, null, null, null, null, null);
+        }
+        if (vet.isPresent() && !vet.get().isEmpty()) {
+            appointments = appointments.stream().filter(appointment -> appointment.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase())
+            || appointment.getVet().getFirstName().toLowerCase().contains(vet.get().toLowerCase())
+            || appointment.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase())).toList();
+        }
+        if (pet.isPresent() && !pet.get().isEmpty()) {
+            appointments = appointments.stream().filter(appointment -> appointment.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
+        }
+        if (owner.isPresent() && !owner.get().isEmpty()) {
+            appointments = appointments.stream().filter(appointment -> appointment.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
+            || appointment.getPet().getOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase())
+            || appointment.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())).toList();
+        }
+        if (clinic.isPresent()) {
+            appointments = appointments.stream().filter(appointment -> appointment.getClinic().getId().equals(clinic.get())).toList();
+        }
+        if (status.isPresent()) {
+            if (status.get()) {
+                appointments = appointments.stream().filter(appointment -> appointment.getStatus().equals(AppointmentStatus.BOOKED)).toList();
+            } else {
+                appointments = appointments.stream().filter(appointment -> appointment.getStatus().equals(AppointmentStatus.CANCELLED)).toList();
+            }
+        }
+        if (startDate.isPresent()) {
+            List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            appointments = appointments.stream().filter(appointment -> appointment.getSlot().isAfter(LocalDateTime.of(startDateComponents.get(2), startDateComponents.get(1), startDateComponents.get(0), 0, 0))).toList();
+        }
+        if (endDate.isPresent()) {
+            List<Integer> endDateComponents = new ArrayList<>(List.of(Arrays.stream(endDate.get().split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
+            appointments = appointments.stream().filter(appointment -> appointment.getSlot().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), 23, 59))).toList();
+        }
+        if (cancelledBy.isPresent() && !cancelledBy.get().isEmpty()) {
+            appointments = appointments.stream().filter(appointment -> appointment.getCancelledBy().getLastName().toLowerCase().contains(cancelledBy.get().toLowerCase())
+            || appointment.getCancelledBy().getFirstName().contains(cancelledBy.get().toLowerCase())
+            || appointment.getCancelledBy().getUsername().contains(cancelledBy.get())).toList();
+        }
+        return ResponseEntity.ok().body(appointments.stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
+
 
     @GetMapping("/appointment/{id}")
     public ResponseEntity<?> getAppointment(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
         UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
         Appointment appointment = appointmentService.getById(id);
-        if (!usefulFunctions.isAdmin(currentUser) && !appointment.getPet().getOwner().getId().equals(currentUser.getId()) && !appointment.getVet().getId().equals(currentUser.getId())) {
+        if (!usefulFunctions.isAdmin(currentUser) &&
+                (
+                        (appointment.getPet() != null && appointment.getPet().getOwner() != null && !appointment.getPet().getOwner().getId().equals(currentUser.getId()))
+                                || (appointment.getCurrentOwner() != null && !appointment.getCurrentOwner().getId().equals(currentUser.getId()))
+                )
+                                && appointment.getVet() != null && !appointment.getVet().getId().equals(currentUser.getId())) {
             throw new AccessDeniedException("Doar administratorii si utilizatorii asociati programarii o pot vizualiza.");
         }
         return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointment));
@@ -227,4 +267,23 @@ public class AppointmentController {
         return ResponseEntity.ok().body(appointmentMapper.toAppointmentDTO(appointmentService.updatePastAppointmentStatus(id, true)));
     }
 
+    @GetMapping("/upcoming-owner/{k}")
+    public ResponseEntity<?> getUpcomingAppointmentsByOwner(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        return ResponseEntity.ok().body(appointmentService.getTopKByOwner(userService.getUserById(currentUser.getId()), k, LocalDateTime.now()).stream().map(appointmentMapper::toAppointmentDTO).toList());
+    }
+
+    @GetMapping("/upcoming-vet/{k}")
+    public ResponseEntity<?> getUpcomingAppointmentsByVet(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
+        return ResponseEntity.ok().body(appointmentService.getTopKByVet(userService.getUserById(currentUser.getId()), k, LocalDateTime.now()).stream().map(appointmentMapper::toAppointmentDTO).toList());
+    }
+
+    @GetMapping("/{id}/send-email")
+    public ResponseEntity<?> sendEmail(@PathVariable Integer id) {
+        Appointment appointment = appointmentService.getById(id);
+        Notification notification = notificationService.findLastByAppointment(appointment);
+        notificationService.sendEmail(notification);
+        return ResponseEntity.ok().build();
+    }
 }

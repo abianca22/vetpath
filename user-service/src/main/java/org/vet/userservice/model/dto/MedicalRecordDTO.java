@@ -1,13 +1,10 @@
 package org.vet.userservice.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import org.vet.userservice.model.entity.Appointment;
-import org.vet.userservice.model.entity.Pet;
-import org.vet.userservice.model.entity.User;
+import org.vet.userservice.model.dto.appointments.AppointmentDTO;
 
 import java.time.LocalDateTime;
 

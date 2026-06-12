@@ -28,6 +28,8 @@ public class ClinicService {
 
     @Autowired
     private AppointmentService appointmentService;
+    @Autowired
+    private PetService petService;
 
     public Clinic addClinic(Clinic clinic) {
         return clinicRepository.save(clinic);
@@ -54,11 +56,13 @@ public class ClinicService {
                         appointmentService.cancelAppointment(appointments.get(j), false);
                     }
                     else {
-                        System.out.println(appointments.get(j).getId());
                         appointments.get(j).setClinic(null);
-                        System.out.println(appointments.get(j).getClinic());
                         appointmentService.changeClinic(appointments.get(j));
                     }
+                }
+                else {
+                    appointments.get(j).setClinic(null);
+                    appointmentService.changeClinic(appointments.get(j));
                 }
             }
         clinicRepository.delete(clinic);
@@ -77,7 +81,7 @@ public class ClinicService {
         return clinicRepository.save(dbClinic);
     }
 
-    public Clinic removeVetFromClinic(Clinic clinic, User vet) {
+    public Clinic removeVetFromClinic(Clinic clinic, User vet, String reason) {
         Clinic dbClinic = getClinicById(clinic.getId());
         User dbUser = userService.getUserById(vet.getId());
         if (!dbClinic.getVets().contains(dbUser)) {
@@ -90,7 +94,7 @@ public class ClinicService {
                 appointmentService.deleteSlot(appointments.get(j).getId());
             }
             else if (appointments.get(j).getStatus().equals(AppointmentStatus.BOOKED) && appointments.get(j).getSlot().isAfter(LocalDateTime.now())){
-                appointments.get(j).setCancelReason("Parasire clinica");
+                appointments.get(j).setCancelReason(reason);
                 appointments.get(j).setCancelledBy(dbUser);
                 appointmentService.cancelAppointment(appointments.get(j), false);
             }

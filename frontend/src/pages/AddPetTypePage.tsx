@@ -1,40 +1,3 @@
-// import {Button, Form} from "react-bootstrap";
-// import {AuthContext} from "../api/authContext.ts";
-// import {useContext, useState} from "react";
-// import {addPetType} from "../api/api.ts";
-//
-// export default function AddPetType() {
-//     const auth = useContext(AuthContext);
-//     const [error, setError] = useState(null);
-//     const [enabled, setEnabled] = useState(false);
-//
-//     async function postData(formData) {
-//         const name = formData.get("name");
-//         const saveType = async () => {
-//             try {
-//                 await addPetType(auth.token, name);
-//                 setError(null);
-//                 setEnabled(false);
-//             }
-//             catch (err) {
-//                 setError(err.message);
-//             }
-//         }
-//         saveType();
-//     }
-//
-//     return <>
-//         {!enabled && <Button variant="primary" onClick={() => setEnabled(true)}>Adaugare</Button>}
-//         {enabled &&
-//         <Form id="add-type-form" action={postData}>
-//             { error && <p className="text-danger"><small>{error}</small></p> }
-//             <input type="text" name="name" placeholder="Denumire"/>
-//             <Button type="submit">Salveaza</Button>
-//         </Form>
-//         }
-//     </>
-// }
-
 import React, {useContext, useRef, useState} from "react";
 import {Button, Form, Container, Row, Col} from "react-bootstrap";
 import {AuthContext} from "../api/authContext.ts";
@@ -60,6 +23,7 @@ export default function AddPetType(props) {
             setError(null);
             setEnabled(false);
             props.save();
+            props.showToast();
             formRef.current?.reset();
         } catch (err) {
             setError(err?.message ?? "An error occurred.");

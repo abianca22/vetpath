@@ -22,9 +22,6 @@ public class PetService {
     }
 
     public List<Pet> findPetByOwner(User owner) {
-        if (petRepository.findAllByOwner(owner).isEmpty()) {
-            throw new NoDataFoundException("Nu a fost gasit niciun animal de companie pentru proprietarul " + owner.getFirstName() + " " + owner.getLastName());
-        }
         return petRepository.findAllByOwner(owner);
     }
 

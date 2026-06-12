@@ -23,11 +23,14 @@ export default function CancelAppointmentForm(props) {
         const cancelReason = formData.get("reason");
         if (!props.slot) return;
         try {
-            await cancelAppointment(auth.token, auth.user, props.slot.id,auth.user.id === props.slot.vet.id ? checked : true, cancelReason);
+            const res = await cancelAppointment(auth.token, auth.user, props.slot.id,auth.user.id === props.slot.vet.id ? checked : true, cancelReason);
             setError(null);
+            sessionStorage.setItem("sendEmailAppointmentId", res.id.toString())
+            props.showToast();
             props.save();
         }
         catch(err) {
+            sessionStorage.removeItem("sendEmailAppointmentId")
             setError(err);
         }
     }

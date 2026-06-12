@@ -1,63 +1,12 @@
-// import {useContext, useEffect, useState} from "react";
-// import {deletePetType, getAllTypes} from "../api/api.ts";
-// import {Button, Col, Row} from "react-bootstrap";
-// import {AuthContext} from "../api/authContext.ts";
-// import {isAdmin} from "../api/roles.ts";
-// import AddPetType from "./AddPetTypePage.tsx";
-//
-// export default function PetTypes() {
-//     const [types, setTypes] = useState(null);
-//     const auth = useContext(AuthContext);
-//     const [error, setError] = useState(null);
-//
-//     useEffect(() => {
-//         const fetchTypes = async () => {
-//             const res = await getAllTypes();
-//             setTypes(res);
-//         }
-//         fetchTypes();
-//     }, [types]);
-//
-//     async function handleDelete(typeId) {
-//         try {
-//             await deletePetType(auth.token, typeId);
-//             setTypes(types.filter(type => type.id !== typeId));
-//             setError(null);
-//         }
-//         catch (err) {
-//             setError(err.message);
-//         }
-//     }
-//
-//     return <>
-//         { error && <p className="text-danger"><small>{error}</small></p> }
-//         { types && types.length > 0 ? types.map(type => (
-//             <Row key={type.id}>
-//                 <Col>
-//                     <h5>{type.name}</h5>
-//                 </Col>
-//                 <Col>
-//                     { auth.user && isAdmin(auth.user.roles) &&
-//                         <Button variant="danger" onClick={() => handleDelete(type.id)}>Elimina</Button>
-//                     }
-//                 </Col>
-//             </Row>
-//         )) : <p className="py-3">Nu s-au gasit tipuri de animale de companie</p> }
-//         { auth.user && isAdmin(auth.user.roles) &&
-//             <>
-//                 <AddPetType/>
-//                 </>
-//         }
-//     </>
-// }
-
-// src/pages/PetTypesPage.tsx
 import { useContext, useEffect, useState } from "react";
 import { deletePetType, getAllTypes } from "../api/api.ts";
 import { Container, Card, Row, Col, Button, Spinner, Alert, ListGroup } from "react-bootstrap";
 import { AuthContext } from "../api/authContext.ts";
 import { isAdmin } from "../api/roles.ts";
 import AddPetType from "./AddPetTypePage";
+import Confirm from "../components/Confirm.tsx";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 type PetType = { id: number | string; name: string };
 
@@ -66,10 +15,16 @@ export default function PetTypes() {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const auth = useContext(AuthContext);
-    const [updated, setUpdated] = useState(false);
+    const [updated, setUpdated] = useState(0);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [currentPetTypeId, setCurrentPetTypeId] = useState("");
+    const [deleted, setDeleted] = useState(0);
 
     async function typesUpdated() {
-        setUpdated(true);
+        setUpdated(prevState => prevState + 1);
     }
 
     useEffect(() => {
@@ -87,15 +42,16 @@ export default function PetTypes() {
             }
         };
         fetchTypes();
-    }, [updated]);
+    }, [updated, deleted]);
 
     async function handleDelete(typeId: number | string) {
         setError(null);
         try {
             await deletePetType(auth.token, typeId);
             setTypes(prev => prev ? prev.filter(t => t.id !== typeId) : []);
+            setDeleted(prevState => prevState + 1);
         } catch (err) {
-            setError(err?.message ?? "Delete failed.");
+            setError(err.message);
         }
     }
 
@@ -123,11 +79,14 @@ export default function PetTypes() {
                                             <ListGroup.Item key={type.id}>
                                                 <Row className="align-items-center">
                                                     <Col>
-                                                        <a href={`/pets/types/${type.name}/breeds`} className="no-decoration"><strong>{type.name}</strong></a>
+                                                        <a href={`/pets/types/${type.id}/breeds`} className="no-decoration"><strong>{type.name}</strong></a>
                                                     </Col>
                                                     <Col xs="auto">
                                                         {auth.user && isAdmin(auth.user.roles) && (
-                                                            <Button variant="danger" size="sm" onClick={() => handleDelete(type.id)}>Stergere</Button>
+                                                            <Button variant="danger" size="sm" onClick={() => {
+                                                                setCurrentPetTypeId(type.id.toString());
+                                                                setDeleteConfirm(true);
+                                                            }}>Stergere</Button>
                                                         )}
                                                     </Col>
                                                 </Row>
@@ -147,6 +106,18 @@ export default function PetTypes() {
                     )}
                 </Card>
             </Col>
+            <Confirm confirm={() => {
+                setDeleteConfirm(false);
+                handleDelete(currentPetTypeId);
+                setSuccessMessage("Datele au fost sterse cu succes");
+                setShowSuccess(true);
+            }}
+                     close={() => setDeleteConfirm(false)}
+                     message="Doriti sa stergeti aceasta specie?"
+                     open={deleteConfirm}
+            />
+            <SuccessToast show={showSuccess} close={() => setShowSuccess(false)} message={successMessage}/>
+            <ErrorToast show={showError} close={() => setShowError(false)} message={error}/>
         </Container>
     );
 }

@@ -5,6 +5,7 @@ import {AuthContext} from "../api/authContext.ts";
 import {deleteClinic, editClinic, getClinicById, joinClinic, leaveClinic} from "../api/api.ts";
 import {isAdmin, isVeterinarian} from "../api/roles.ts";
 import Confirm from "../components/Confirm.tsx";
+import SuccessToast from "../components/SuccessToast.tsx";
 
 export default function IndividualClinic() {
     const auth = useContext(AuthContext);
@@ -16,7 +17,9 @@ export default function IndividualClinic() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showJoinConfirm, setShowJoinConfirm] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [showError, setShowError] = useState(false);
 
     async function postData(formData) {
         const name = formData.get("name");
@@ -26,10 +29,13 @@ export default function IndividualClinic() {
                 try {
                     const res = await editClinic(auth.token, {id: clinic.id, name: name, address: address, phoneNumber: phone, vets: []});
                     setError(null);
+                    setSuccessMessage("Datele au fost salvate cu success");
+                    setShowSuccess(true);
                     setClinic(res);
                 }
                 catch (err) {
                     setError(err.message);
+                    setShowError(true);
                 }
         }
         saveClinic();
@@ -60,6 +66,7 @@ export default function IndividualClinic() {
     async function handleDelete() {
         try {
             await deleteClinic(auth.token, clinic.id);
+            sessionStorage.setItem("deletedClinicId", clinic.id);
             navigate(`/clinics`);
         }
         catch (err) {
@@ -83,6 +90,8 @@ export default function IndividualClinic() {
         try {
             const res = await joinClinic(auth.token, auth.user.username, clinic.id);
             setClinic(res);
+            setSuccessMessage("Asocierea s-a produs cu success");
+            setShowSuccess(true);
         }
         catch (err) {
             console.log(err);
@@ -93,6 +102,8 @@ export default function IndividualClinic() {
         try {
             const res = await leaveClinic(auth.token, auth.user.username, clinic.id);
             setClinic(res);
+            setSuccessMessage("Parasirea clinicii s-a finalizat cu succes");
+            setShowSuccess(true);
         }
         catch (err) {
             console.log(err);
@@ -121,7 +132,7 @@ export default function IndividualClinic() {
                                     <Col xs={6} className="fw-bold">Adresa</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="clinic-address">
-                                            <Form.Control defaultValue={clinic.address} name="address" type="text" disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}/>
+                                            <Form.Control as="textarea" defaultValue={clinic.address} name="address" type="text" disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}/>
                                         </Form.Group>
                                     </Col>
                                 </Row>
@@ -196,6 +207,8 @@ export default function IndividualClinic() {
     <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti aceasta clinica?"/>
         <Confirm open={showJoinConfirm} close={closeJoinConfirm} confirm={handleJoin} message="Doriti sa va asociati acestei clinici?"/>
         <Confirm open={showLeaveConfirm} close={closeLeaveConfirm} confirm={handleLeave} message="Doriti sa parasiti aceasta clinica?"/>
+        <SuccessToast show={showSuccess} close={() => setShowSuccess(false)} message={successMessage}/>
+        <SuccessToast show={showError} close={() => setShowError(false)} message={error}/>
     </>
 
 }

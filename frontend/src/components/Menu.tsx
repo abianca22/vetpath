@@ -1,7 +1,11 @@
-import {Container, Nav, Navbar} from "react-bootstrap";
+import {Badge, Container, Nav, Navbar} from "react-bootstrap";
 import {isAdmin, isPetOwner, isVeterinarian} from "../api/roles.ts";
 
 export default function Menu({auth}) {
+    function newNotificationsLength(): number {
+        return auth.notifications.filter(notification => !notification.seen).length;
+    }
+
     return (
         <Navbar sticky="top" data-bs-theme="dark" className="w-100 vet-bg px-lg-3">
             <Container fluid>
@@ -19,6 +23,7 @@ export default function Menu({auth}) {
                             <Nav.Link href="/appointments" className={window.location.href.includes('appointments') ? "selected" : ""}>Programari</Nav.Link>
                             <Nav.Link href="/records" className={window.location.href.includes('records') ? "selected" : ""}>Rapoarte</Nav.Link>
                             <Nav.Link href="/ask" className={window.location.href.includes('ask') ? "selected" : ""}>Intrebari</Nav.Link>
+                            <Nav.Link href="/notifications" className={window.location.href.includes('notifications') ? "selected" : ""}>Notificari{newNotificationsLength() !== 0 ? <Badge className="bg-danger mx-1">{newNotificationsLength()}</Badge> : ''}</Nav.Link>
                             <Nav.Link onClick={() => auth.logout()}>Logout</Nav.Link>
 
                         </>

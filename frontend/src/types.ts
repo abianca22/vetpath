@@ -54,6 +54,8 @@ export interface AppointmentDTO {
     cancelledBy: UserDTO;
     status: string;
     done: boolean;
+    notes: string;
+    currentOwner: UserDTO;
 }
 
 export interface SlotDTO {
@@ -79,4 +81,15 @@ export interface ChatEntryDTO {
     approvedBy: UserDTO;
     pet: PetDTO;
     timestamp: string;
+    medicalRecord: MedicalRecordDTO;
+}
+
+export interface NotificationDTO {
+    id: number;
+    receiver: UserDTO;
+    appointment: AppointmentDTO;
+    title: string;
+    content: string;
+    seen: boolean;
+    date: string;
 }

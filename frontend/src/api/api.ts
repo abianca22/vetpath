@@ -29,7 +29,7 @@ import type {
     BreedDTO,
     ChatEntryDTO,
     ClinicDTO,
-    MedicalRecordDTO,
+    MedicalRecordDTO, NotificationDTO,
     PetDTO,
     TypeDTO,
     UserDTO
@@ -69,24 +69,34 @@ export const updateData = async (token, data): Promise<UserDTO> => {
 }
 
 export const deleteUser = async (token, auth): Promise<void> => {
-  await fetch(`http://localhost:8081/api/admin/users/${auth.user.id}`, {
+  const res = await fetch(`http://localhost:8081/api/admin/users/${auth.user.id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`
     }
   });
+  if (!res.ok) {
+      throw new Error(await res.text());
+  }
 }
 
-export const getAllUsers = async (token): Promise<UserDTO[]> => {
-    const res = await fetch("http://localhost:8081/api/users/all", {
+export const getAllUsers = async (token, user, role): Promise<UserDTO[]> => {
+    const requestParams = [];
+    if (user !== null && user !== undefined && user.trim() !== '') {
+        requestParams.push(`user=${user.trim()}`);
+    }
+    if (role !== null && role !== undefined && role.trim() !== '') {
+        requestParams.push(`role=${role.trim()}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/users/all${requestParams.length > 0 ? `?${requestParams.join('&')}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` }
     });
 
     return await res.json();
 }
 
-export const getAllVeterinarians = async (token): Promise<Array<UserDTO>> => {
-    const res = await fetch("http://localhost:8081/api/users/admin-vet", {
+export const getAllVeterinarians = async (token, user): Promise<Array<UserDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/users/admin-vet${user !== null && user !== undefined && user.trim() !== '' ?  `?user=${user.trim()}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -101,6 +111,9 @@ export const changeRole = async (token, id, role): Promise<UserDTO> => {
             "Content-Type": "application/json"
         }
     });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
     return await res.json();
 }
 
@@ -183,7 +196,7 @@ export const deletePetType = async(token, typeId): Promise<void> => {
     });
 
     if (!res.ok) {
-        throw new Error(`Failed to delete pet type: ${res.status}`);
+        throw new Error(await res.text());
     }
 }
 
@@ -212,7 +225,7 @@ export const deleteBreed = async(token, breedId): Promise<void> => {
     });
 
     if (!res.ok) {
-        throw new Error(`Failed to delete breed: ${res.status}`);
+        throw new Error(await res.text());
     }
 }
 
@@ -285,8 +298,15 @@ export const getClinicsByVeterinarian = async(vet): Promise<Array<ClinicDTO>> =>
     return await res.json();
 }
 
-export const getAllClinics = async(): Promise<Array<ClinicDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/clinics/all`, {
+export const getAllClinics = async(name, employee): Promise<Array<ClinicDTO>> => {
+    const requestParams = [];
+    if (name !== null && name !== undefined && name.trim() !== '') {
+        requestParams.push(`name=${name.trim()}`);
+    }
+    if (employee !== null && employee !== undefined && employee.trim() !== '') {
+        requestParams.push(`employee=${employee.trim()}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/clinics/all${requestParams.length > 0 ? `?${requestParams.join("&")}` : ''}`, {
         method: "GET"
     });
 
@@ -402,8 +422,50 @@ export const getSlots = async(token, username, allSlots = true, start = null, en
     return await res.json();
 }
 
-export const getAppointments = async(token): Promise<Array<AppointmentDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/appointments`, {
+export const getAppointmentsByPet = async(token, petId): Promise<Array<AppointmentDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/pet/${petId}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(`Failed to get appointments: ${res.status}`);
+    }
+
+    return await res.json();
+}
+
+
+export const getAppointments = async(token, pet, owner, startDate, endDate, status, cancelledBy, clinic, vet): Promise<Array<AppointmentDTO>> => {
+    const requestParams = [];
+    if (pet !== null && pet !== undefined && pet.trim() !== '') {
+        requestParams.push(`pet=${pet.trim()}`);
+    }
+    if (owner !== null && owner !== undefined && owner.trim() !== '') {
+        requestParams.push(`owner=${owner.trim()}`);
+    }
+    if (startDate !== null && startDate !== undefined && startDate.trim() !== '') {
+        requestParams.push(`startDate=${startDate.trim()}`);
+    }
+    if (endDate !== null && endDate !== undefined && endDate.trim() !== '') {
+        requestParams.push(`endDate=${endDate.trim()}`);
+    }
+    if (status !== null && status !== undefined) {
+        requestParams.push(`status=${status}`);
+    }
+    if (cancelledBy !== null && cancelledBy !== undefined && cancelledBy.trim() !== '') {
+        requestParams.push(`cancelledBy=${cancelledBy.trim()}`);
+    }
+    if (clinic !== null && clinic !== undefined && clinic.trim() !== '') {
+        requestParams.push(`clinic=${clinic.trim()}`);
+    }
+    if (vet !== null && vet !== undefined && vet.trim() !== '') {
+        requestParams.push(`vet=${vet.trim()}`);
+    }
+    console.log(`http://localhost:8081/api/appointments${requestParams.length > 0 ? `?${requestParams.join("&")}` : ''}`);
+    const res = await fetch(`http://localhost:8081/api/appointments${requestParams.length > 0 ? `?${requestParams.join("&")}` : ''}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`
@@ -716,8 +778,15 @@ export const sendQuestion = async(token, question, petId): Promise<string> => {
     return await res.text();
 }
 
-export const fetchChatEntries = async(token, username): Promise<Array<ChatEntryDTO>> => {
-    const res = await fetch(`http://localhost:8081/chat/owner/${username}`, {
+export const fetchChatEntries = async(token, username, pet, keyword): Promise<Array<ChatEntryDTO>> => {
+    const requestParams = [];
+    if (pet !== null && pet !== undefined && pet.trim() !== '') {
+        requestParams.push(`pet=${pet}`);
+    }
+    if (keyword !== null && keyword !== undefined && keyword.trim() !== '') {
+        requestParams.push(`keyword=${keyword}`);
+    }
+    const res = await fetch(`http://localhost:8081/chat/owner/${username}${requestParams.length > 0 ? `?${requestParams.join('&')}` : ''}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`
@@ -787,18 +856,107 @@ export const filterPets = async(token, owner, name, type, breed): Promise<Array<
     return await res.json();
 }
 
+export const getUpcomingOwnerAppointments = async(token, k): Promise<Array<AppointmentDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/upcoming-owner/${k}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
 
-// export const fetchAppointments = async(token, startDate, endDate, petId, vetName, clinicId, status, owner): Promise<Array<AppointmentDTO>> =>{
-//     const res = await fetch(`http://localhost:8081/api/appointments${startDate || endDate || petId !== null || vetName !== null || clinicId !== null || status !== null ?  '?' : ''}startDate=${startDate}&endDate=${endDate}&pet=${petId}&vet=${vetName}&clinic=${clinicId}&status=${status === 'BOOKED'}&owner=${owner}`, {
-//         method: 'GET',
-//         headers: {
-//             Authorization: `Bearer ${token}`
-//         }
-//     });
-//
-//     if (!res.ok) {
-//         throw new Error(await res.text());
-//     }
-//
-//     return await res.json();
-// }
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const getUpcomingVetAppointments = async(token, k): Promise<Array<AppointmentDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/appointments/upcoming-vet/${k}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const approveResponse = async(token, chatEntryId): Promise<MedicalRecordDTO> => {
+    const res = await fetch(`http://localhost:8081/chat/approve/${chatEntryId}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+    return await res.json();
+}
+
+export const getQuestionByRecord = async(token, recordId): Promise<ChatEntryDTO | null> => {
+    const res = await fetch(`http://localhost:8081/chat/record/${recordId}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+    return await res.json();
+}
+
+export const sendEmail = async(token, notificationId) => {
+    const res = await fetch(`http://localhost:8081/api/appointments/${notificationId}/send-email`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+}
+
+
+export const getNotifications = async(token): Promise<Array<NotificationDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/notifications`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+
+}
+
+export const updateNotifications = async(token): Promise<Array<NotificationDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/notifications/all-new`, {
+        method: "PUT",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+

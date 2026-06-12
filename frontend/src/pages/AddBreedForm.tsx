@@ -73,7 +73,7 @@ export default function AddBreed(props) {
                 const res = await getAllTypes();
                 setTypes(Array.isArray(res) ? res : []);
                     if (props.type) {
-                        const matchedType = (Array.isArray(res) ? res : []).find(t => t.name === props.type);
+                        const matchedType = (Array.isArray(res) ? res : []).find(t => t.id.toString() === props.type);
                         if (matchedType) {
                             setCurrentType(matchedType.id);
                         } else {
@@ -105,6 +105,7 @@ export default function AddBreed(props) {
             await addBreed(auth.token, breedName, typeId);
             setEnabled(false);
             formRef.current?.reset();
+            props.showToast();
             props.save?.();
         } catch (err) {
             setError(err?.message ?? "An error occurred.");

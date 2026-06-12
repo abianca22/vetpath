@@ -1,6 +1,6 @@
 import {type ReactNode, useEffect, useState} from "react";
 import type {UserDTO} from "../types.ts";
-import {getUserInfo} from "../api/api.ts";
+import {getNotifications, getUserInfo} from "../api/api.ts";
 import {AuthContext} from "../api/authContext.ts";
 import type Keycloak from "keycloak-js";
 
@@ -8,6 +8,7 @@ export const AuthProvider = ({ children, keycloak }: { children: ReactNode, keyc
     const [user, setUser] = useState<UserDTO|null>(null);
     const [token, setToken] = useState<string|null>(keycloak.token);
     const [loading, setLoading] = useState(true);
+    const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
         if (!keycloak.token) {
@@ -19,6 +20,8 @@ export const AuthProvider = ({ children, keycloak }: { children: ReactNode, keyc
                 const data = await getUserInfo(keycloak.token);
                 setUser(data);
                 setToken(keycloak.token);
+                const res = await getNotifications(keycloak.token);
+                setNotifications(res);
             } catch (err) {
                 console.log(keycloak.token);
                 console.error("Backend error", err);
@@ -41,7 +44,7 @@ export const AuthProvider = ({ children, keycloak }: { children: ReactNode, keyc
     }
 
     return (
-        <AuthContext.Provider value={{ user, setUser, token, logout, login, loading }}>
+        <AuthContext.Provider value={{ user, setUser, token, logout, login, loading, notifications, setNotifications}}>
             {children}
         </AuthContext.Provider>
     );

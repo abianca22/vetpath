@@ -9,9 +9,6 @@ import PrivateRoute from "./custom-routes/PrivateRoute.tsx";
 import {petOwner, admin, veterinarian} from "./api/roles.ts";
 import roles from "./api/roles.ts";
 import NotAuthenticatedRoute from "./custom-routes/NotAuthenticatedRoute.tsx";
-import {useContext} from "react";
-import {AuthContext} from "./api/authContext.ts";
-import Menu from "./components/Menu.tsx";
 import Visit from "./pages/VisitPage.tsx";
 import AccessDenied from "./pages/AccessDeniedPage.tsx";
 import PersonalPets from "./pages/PersonalPetsPage.tsx";
@@ -29,13 +26,20 @@ import Chat from "./pages/SymptomsChatPage.tsx";
 import ChatEntries from "./pages/ChatEntriesPage.tsx";
 import QuestionResponse from "./pages/QuestionResponsePage.tsx";
 import Pets from "./pages/PetsPage.tsx";
+// import AppLayout from "./layouts/AppLayout.tsx";
+import {useContext} from "react";
+import {AuthContext} from "./api/authContext.ts";
+import Menu from "./components/Menu.tsx";
+import NotificationsList from "./pages/NotificationsListPage.tsx";
+// import Appointments from "./modules/appointments/Appointments.tsx";
 
 function App() {
     const auth = useContext(AuthContext);
     return (
         <>
-            <div className="d-flex min-vh-100 flex-column">
+            <div className="d-flex min-vh-100 flex-column bg-lime-50">
                     <Menu auth={auth}/>
+                {/*<AppLayout>*/}
                     <Routes>
                         <Route path="/" element={<PrivateRoute element={Profile} roles={roles}/>} />
                         <Route path="/profile" element={<PrivateRoute element={Profile} roles={roles}/>} />
@@ -58,14 +62,16 @@ function App() {
                         <Route path="/slots/:username" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
                         <Route path="/slots" element={<PrivateRoute element={SlotsList} roles={[veterinarian]}/>} />
                         <Route path="/appointments" element={<PrivateRoute element={AppointmentsList} roles={roles}/>} />
+                        {/*<Route path="/appointments" element={<PrivateRoute element={Appointments} roles={roles}/>} />*/}
                         <Route path="/appointments/details" element={<PrivateRoute element={AppointmentDetails} roles={roles}/>}/>
                         <Route path="/records/details" element={<PrivateRoute element={RecordDetails} roles={roles}/>}/>
                         <Route path="/records" element={<PrivateRoute element={RecordsList} roles={roles}/>} />
                         <Route path="/ask" element={<PrivateRoute element={Chat} roles={roles}/>} />
                         <Route path="/ask/history/:username" element={<PrivateRoute element={ChatEntries} roles={roles}/>} />
                         <Route path="/ask/history/:username/details" element={<PrivateRoute element={QuestionResponse} roles={roles}/>} />
-
+                        <Route path="/notifications" element={<PrivateRoute element={NotificationsList} roles={roles}/>}/>
                     </Routes>
+                {/*</AppLayout>*/}
             </div>
         </>
     );

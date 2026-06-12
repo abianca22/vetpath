@@ -103,6 +103,10 @@ export default function Visit() {
                                     (isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles)) &&
                                     <Button variant="secondary" className="mt-2" href={`/pets/${visitedUser.username}`}>Animale asociate</Button>
                                 }
+                                {
+                                    (isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles) || (auth.user.username === username)) &&
+                                    <Button variant="secondary" className="mt-2 mx-2" href={`/ask/history/${visitedUser.username}`}>Istoric intrebari</Button>
+                                }
                             </Card.Body>
                         </Card>
                         <br/>

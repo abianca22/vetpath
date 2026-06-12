@@ -1,10 +1,13 @@
-package org.vet.userservice.model.dto;
+package org.vet.userservice.model.dto.appointments;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.vet.userservice.model.dto.ClinicDTO;
+import org.vet.userservice.model.dto.PetDTO;
+import org.vet.userservice.model.dto.UserDTO;
 import org.vet.userservice.model.enums.AppointmentStatus;
 
 import java.time.LocalDateTime;
@@ -23,6 +26,8 @@ public class AppointmentDTO {
     @NotNull(message = "Selectarea medicului veterinar este obligatorie")
     private UserDTO vet;
 
+    private UserDTO currentOwner;
+
     @NotNull(message = "Selectarea clinicii este obligatorie")
     private ClinicDTO clinic;
 
@@ -40,4 +45,6 @@ public class AppointmentDTO {
     private String cancelReason;
 
     private Boolean done;
+
+    private String notes;
 }

@@ -127,8 +127,22 @@ public class UserController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'VETERINARIAN')")
     @GetMapping("/all")
-    public ResponseEntity<List<UserDTO>> getUsers() {
+    public ResponseEntity<List<UserDTO>> getUsers(@RequestParam(value = "user") Optional<String> userString, @RequestParam(value = "role") Optional<String> roleString) {
         List<User> users = userService.getAllUsers();
+        if (userString.isPresent()) {
+            String searchString = userString.get().toLowerCase();
+            users = users.stream()
+                    .filter(u -> u.getUsername().toLowerCase().contains(searchString) ||
+                            u.getFirstName().toLowerCase().contains(searchString) ||
+                            u.getLastName().toLowerCase().contains(searchString))
+                    .toList();
+        }
+        if (roleString.isPresent()) {
+            String roleName = roleString.get().toUpperCase();
+            users = users.stream()
+                    .filter(u -> u.getRoles().stream().anyMatch(r -> r.getName().equals(roleName)))
+                    .toList();
+        }
         List<UserDTO> userDTOs = users.stream()
                 .map(userMapper::toUserDTO)
                 .collect(Collectors.toList());
@@ -150,8 +164,16 @@ public class UserController {
     }
 
     @GetMapping("/admin-vet")
-    public ResponseEntity<List<UserDTO>> getVeterinariansAndAdmins() {
+    public ResponseEntity<List<UserDTO>> getVeterinariansAndAdmins(@RequestParam(value = "user") Optional<String> userString) {
         List<User> users = userService.getAllUsers();
+        if (userString.isPresent()) {
+            String searchString = userString.get().toLowerCase();
+            users = users.stream()
+                    .filter(u -> u.getUsername().toLowerCase().contains(searchString) ||
+                            u.getFirstName().toLowerCase().contains(searchString) ||
+                            u.getLastName().toLowerCase().contains(searchString))
+                    .toList();
+        }
         List<UserDTO> vets = users.stream()
                 .filter(user -> (user.getRoles().contains(roleService.findByName("VETERINARIAN")) || user.getRoles().contains(roleService.findByName("ADMIN"))))
                 .map(userMapper::toUserDTO)

@@ -14,6 +14,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.0.0",
     "@react-keycloak/web": "^3.4.0",
+    "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.13.5",
     "bootstrap": "^5.3.8",
     "date-fns": "^4.1.0",
@@ -24,7 +25,8 @@
     "react-confirm": "^0.5.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
-    "rsuite": "^6.1.2"
+    "rsuite": "^6.1.2",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

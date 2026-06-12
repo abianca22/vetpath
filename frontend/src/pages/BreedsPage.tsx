@@ -1,56 +1,3 @@
-// import {useContext, useEffect, useState} from "react";
-// import {deleteBreed, getAllBreeds, getBreedsByType} from "../api/api.ts";
-// import {useParams} from "react-router-dom";
-// import {AuthContext} from "../api/authContext.ts";
-// import {isAdmin} from "../api/roles.ts";
-// import AddBreed from "./AddBreedForm.tsx";
-// import {Button, Col, Row} from "react-bootstrap";
-//
-// export default function Breeds() {
-//     const auth = useContext(AuthContext);
-//     const [breeds, setBreeds] = useState(null);
-//     const params = useParams();
-//
-//     useEffect(() => {
-//         const fetchBreeds = async () => {
-//             if (params.typeName !== null && params.typeName !== '' && params.typeName !== undefined) {
-//                 const res = await getBreedsByType(params.typeName);
-//                 setBreeds(res);
-//             }
-//             else {
-//                 const res = await getAllBreeds();
-//                 setBreeds(res);
-//             }
-//         }
-//         fetchBreeds();
-//     }, [breeds]);
-//
-//     async function handleDelete(breedId) {
-//             await deleteBreed(auth.token, breedId);
-//             setBreeds(breeds.filter(breed => breed.id !== breedId));
-//     }
-//
-//     return <>
-//         { breeds && breeds.length > 0 ? breeds.map(breed => (
-//             <Row key={breed.id}>
-//                 <Col>
-//                     <h5>{breed.name}</h5>
-//                 </Col>
-//                 <Col>
-//                     { auth.user && isAdmin(auth.user.roles) &&
-//                         <Button variant="danger" onClick={() => handleDelete(breed.id)}>Elimina</Button>
-//                     }
-//                 </Col>
-//             </Row>
-//         )) : <p className="py-3">Nu s-au gasit rase de animale de companie</p> }
-//         {
-//             auth.user && isAdmin(auth.user.roles) &&
-//             <AddBreed/>
-//         }
-//     </>
-// }
-
-
 import { useContext, useEffect, useState } from "react";
 import { deleteBreed, getAllBreeds, getBreedsByType } from "../api/api.ts";
 import { useParams } from "react-router-dom";
@@ -58,6 +5,9 @@ import { AuthContext } from "../api/authContext.ts";
 import { isAdmin } from "../api/roles.ts";
 import AddBreed from "./AddBreedForm.tsx";
 import { Container, Card, Row, Col, Button, Spinner, Alert, ListGroup } from "react-bootstrap";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
+import Confirm from "../components/Confirm.tsx";
 
 type Breed = { id: number | string; name: string; petType?: { id: number | string; name: string } };
 type Params = { typeName?: string };
@@ -69,6 +19,11 @@ export default function Breeds() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [updatedToggle, setUpdatedToggle] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [deleteConfirm, setDeleteConfirm] = useState(false);
+    const [currentBreedId, setCurrentBreedId] = useState(null);
 
     function refreshRequested() {
         setUpdatedToggle(prev => !prev);
@@ -101,8 +56,11 @@ export default function Breeds() {
         try {
             await deleteBreed(auth.token, breedId);
             setBreeds(prev => prev ? prev.filter(b => b.id !== breedId) : []);
+            setShowSuccess(true);
+            setSuccessMessage("Datele au fost sterse cu success");
         } catch (err) {
             setError(err?.message ?? "Delete failed.");
+            setShowError(true);
         }
     }
 
@@ -133,12 +91,15 @@ export default function Breeds() {
                                                     </Col>
                                                     <Col>
                                                         {breed.petType && (
-                                                                <a href={`/pets/types/${breed.petType.name}/breeds`} className="no-decoration"><strong>{breed.petType.name}</strong></a>
+                                                                <a href={`/pets/types/${breed.petType.id}/breeds`} className="no-decoration"><strong>{breed.petType.name}</strong></a>
                                                         )}
                                                     </Col>
                                                     <Col xs="auto">
                                                         {auth.user && isAdmin(auth.user.roles) && (
-                                                            <Button variant="danger" size="sm" onClick={() => handleDelete(breed.id)}>Delete</Button>
+                                                            <Button variant="danger" size="sm" onClick={() => {
+                                                                setCurrentBreedId(breed.id);
+                                                                setDeleteConfirm(true);
+                                                            }}>Delete</Button>
                                                         )}
                                                     </Col>
                                                 </Row>
@@ -154,11 +115,21 @@ export default function Breeds() {
 
                     {auth.user && isAdmin(auth.user.roles) && (
                         <Card.Footer className="d-flex justify-content-end">
-                            <AddBreed save={refreshRequested} type={params.typeName} />
+                            <AddBreed save={refreshRequested} showToast={() => {setShowSuccess(true); setSuccessMessage("Datele au fost salvate cu succes")}} type={params.typeName} />
                         </Card.Footer>
                     )}
                 </Card>
             </Col>
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message={successMessage}/>
+            <ErrorToast close={() => setShowError(false)} show={showError} message={error}/>
+            <Confirm close={() => setDeleteConfirm(false)}
+                     confirm={() => {
+                        handleDelete(currentBreedId);
+                        setDeleteConfirm(false);
+                     }}
+                     message="Doriti sa stergeti aceasta rasa?"
+                     open={deleteConfirm}
+            />
         </Container>
     );
 }

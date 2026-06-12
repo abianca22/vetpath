@@ -2,7 +2,7 @@ import {useContext, useEffect, useState} from "react";
 import {AuthContext} from "../api/authContext.ts";
 import {useNavigate} from "react-router-dom";
 import {
-    deleteRecord, editRecord,
+    deleteRecord, editRecord, getQuestionByRecord,
 
     getRecordById
 } from "../api/api.ts";
@@ -11,6 +11,8 @@ import {isAdmin} from "../api/roles.ts";
 import MedicalRecordForm from "./MedicalRecordForm.tsx";
 import Confirm from "../components/Confirm.tsx";
 import FormatText from "../FormatText.tsx";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 export default function RecordDetails() {
     const auth = useContext(AuthContext);
@@ -21,6 +23,9 @@ export default function RecordDetails() {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [chatEntry, setChatEntry] = useState(null);
 
     function closeDeleteConfirm() {
         setShowDeleteConfirm(false);
@@ -38,9 +43,11 @@ export default function RecordDetails() {
             setRecord(res);
             setIsActive(false);
             setError(null);
+            setShowSuccess(true);
         }
         catch(err) {
-            setError(err);
+            setError(err.message);
+            setShowError(true);
         }
 
     }
@@ -49,12 +56,12 @@ export default function RecordDetails() {
         try {
             await deleteRecord(auth.token, recordId);
             sessionStorage.removeItem("recordId");
+            navigate("/records");
         }
         catch(err) {
-            setError(err);
-            return;
+            setError(err.message);
+            setShowError(true);
         }
-        navigate("/records");
     }
 
     useEffect(() => {
@@ -63,9 +70,17 @@ export default function RecordDetails() {
                 const res = await getRecordById(auth.token, recordId);
                 setRecord(res);
                 setError(null);
+                try {
+                    const entry = await getQuestionByRecord(auth.token, recordId);
+                    setChatEntry(entry);
+                }
+                catch(err) {
+                    setError(err.message);
+                }
             }
             catch(err) {
-                setError(err);
+                setError(err.message);
+                setShowError(true);
             }
 
         }
@@ -113,14 +128,14 @@ export default function RecordDetails() {
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Proprietar:</Col>
                                     <Col xs={6}>
-                                        {record.pet?.owner?.username}
+                                        {record.pet ? record.pet.owner?.username : record.appointment?.currentOwner?.username}
                                     </Col>
                                 </Row>
                                 <Row className="mt-3">
                                     <Col xs={6} className="fw-bold">Simptome:</Col>
                                     <Col xs={6} className="d-flex justify-content-start">
                                         <Form.Group controlId="symptoms" className="w-100">
-                                            <FormControl name="symptoms" type="text" as="textarea" rows={(record.symptoms.split(" ").length  + record.symptoms.split("\n").length) / 3} defaultValue={record.symptoms} disabled={!isActive}></FormControl>
+                                            <FormControl name="symptoms" type="text" as="textarea" rows={record.symptoms ? (record.symptoms?.split(" ").length  + record.symptoms?.split("\n").length) / 3 : 1} defaultValue={record.symptoms !== 'none' ? record.symptoms : ''} disabled={!isActive}></FormControl>
                                         </Form.Group>
                                     </Col>
                                 </Row>
@@ -129,7 +144,7 @@ export default function RecordDetails() {
                                     <Col xs={6} className="d-flex justify-content-start">
                                         { isActive ?
                                         <Form.Group controlId="diagnosis" className="w-100">
-                                            <FormControl name="diagnosis" type="text" as="textarea" rows={(record.diagnosis.split(" ").length + record.diagnosis.split("\n").length) / 6} defaultValue={record.diagnosis} disabled={!isActive}></FormControl>
+                                            <FormControl name="diagnosis" type="text" as="textarea" rows={record.diagnosis ? (record.diagnosis?.split(" ").length + record.diagnosis?.split("\n").length) / 6 : 1} defaultValue={record.diagnosis} disabled={!isActive}></FormControl>
                                         </Form.Group> :
                                             <div>
                                             <FormatText message={record.diagnosis}></FormatText>
@@ -141,7 +156,7 @@ export default function RecordDetails() {
                                     <Col xs={6} className="fw-bold">Tratament/Recomandări:</Col>
                                     <Col xs={6} className="d-flex justify-content-start">
                                             <Form.Group controlId="treatment" className="w-100">
-                                            <FormControl name="treatment" type="text" as="textarea" rows={(record.treatment.split(" ").length + record.treatment.split("\n").length) / 6} defaultValue={record.treatment} disabled={!isActive}></FormControl>
+                                            <FormControl name="treatment" type="text" as="textarea" rows={record.treatment ? (record.treatment?.split(" ").length + record.treatment?.split("\n").length) / 6 : 1} defaultValue={record.treatment} disabled={!isActive}></FormControl>
                                         </Form.Group>
                                     </Col>
                                 </Row>
@@ -149,14 +164,20 @@ export default function RecordDetails() {
                                     <hr />
                             </Card.Body>
                             <Card.Footer>
-                                {((record.vet?.id === auth.user.id && record?.appointment?.clinic?.vets.some(vet => vet.id === auth.user.id)) || isAdmin(auth.user.roles)) && <>
+                                {(record.vet?.id === auth.user.id && (record?.appointment?.clinic?.vets.some(vet => vet.id === auth.user.id)
+                                        ||
+                                        (chatEntry && chatEntry.approvedBy && chatEntry.approvedBy.id === auth.user.id)
+                                    )
+                                    || isAdmin(auth.user.roles))  && <>
                                     {!isActive ?
                                         <>
                                             <Row>
-                                            <Col>
+                                            <Col> {
+                                                record.pet &&
                                                 <Button variant="primary" onClick={() => {
                                         setIsActive(true);
                                             }}>Editare</Button>
+                                            }
                                             </Col>
                                                 <Col className="text-end">
                                                     <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>Stergere</Button>
@@ -178,6 +199,7 @@ export default function RecordDetails() {
             }} close={() => setShowModal(false)} appointment={record?.appointment}/>
             <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti acest raport medical?"/>
         </Container>
-    </>
-
+        <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message="Datele au fost modificate cu succes!"/>
+        <ErrorToast close={() => setShowError(false)} show={showError} message={error}/>
+        </>
 }

@@ -2,6 +2,7 @@ package org.vet.userservice.model.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.vet.userservice.model.dto.appointments.AppointmentDTO;
 
 @Getter
 @Setter

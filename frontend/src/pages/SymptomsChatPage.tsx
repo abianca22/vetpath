@@ -18,11 +18,12 @@ export default function Chat() {
             try {
                 const res = await findPetByOwnerAndName(auth.token, auth.user.username);
                 setPets(res);
-                setSelectedPet(res[0].id.toString());
+                setSelectedPet(res.length > 0 ? res[0].id.toString(): '');
                 setError(null);
             }
             catch(err) {
                 setError(err);
+                console.error(err);
                 setPets([]);
             }
         }

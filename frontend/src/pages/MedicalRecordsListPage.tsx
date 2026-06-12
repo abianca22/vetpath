@@ -116,7 +116,7 @@ export default function RecordsList() {
             setRecords(records);
         }
         catch(err) {
-            setError(err);
+            setError(err.message);
         }
     }
 
@@ -177,7 +177,7 @@ export default function RecordsList() {
                 setError(null);
             }
             catch(err) {
-                setError(err);
+                setError(err.message);
                 setRecords([]);
             }
         }

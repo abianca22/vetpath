@@ -6,6 +6,8 @@ import {Button, Card, Col, Container, Form, FormSelect, Row} from "react-bootstr
 import {isAdmin} from "../api/roles.ts";
 import moment from "moment";
 import MedicalRecordForm from "./MedicalRecordForm.tsx";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 export default function AppointmentDetails() {
     const auth = useContext(AuthContext);
@@ -19,6 +21,10 @@ export default function AppointmentDetails() {
     const [showRecordModal, setShowRecordModal] = useState(false);
     const [closeCount, setCloseCount] = useState(0);
     const [record, setRecord] = useState(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [showRecordSuccess, setShowRecordSuccess] = useState(false);
+    // const [showRecordError, setShowRecordError] = useState(false);
 
     function openRecordModal() {
         setShowRecordModal(true);
@@ -29,7 +35,6 @@ export default function AppointmentDetails() {
     }
 
     function activeAppointment(app) {
-        if (!app.status.includes("BOOKED")) return false;
         const date = moment(`${app.slot.split(' ')[0].split('.').reverse().join('-')} ${app.slot.split(' ')[1]}`);
         return date.isSameOrAfter(moment());
     }
@@ -39,10 +44,12 @@ export default function AppointmentDetails() {
         try {
             const res = await changeAppointmentPet(auth.token, appointmentId, selectedPetId);
             setError(null);
+            setShowSuccess(true);
             return res;
         }
         catch (err) {
-            setError(err);
+            setError(err.message);
+            setShowError(true);
         }
     }
 
@@ -54,30 +61,23 @@ export default function AppointmentDetails() {
             navigate(`/appointments/details`);
     }
 
-    // async function handleConfirm() {
-    //     try {
-    //         const res = await confirmAppointment(auth.token, appointment.id);
-    //         setAppointment(res);
-    //         setMessage("Programarea a fost inregistrata ca efectuata!");
-    //     }
-    //     catch (err) {
-    //         setError(err);
-    //     }
-    // }
-
-
     useEffect(() => {
         const fetchAppointment = async() => {
                 try {
                     const res = await getAppointment(auth.token, appointmentId);
                     setAppointment(res);
-                    const resPet = await findPetByOwnerAndName(auth.token, res.pet.owner.username);
-                    setPets(resPet);
+                    if (res.currentOwner !== null) {
+                        const resPet = await findPetByOwnerAndName(auth.token, res.currentOwner.username);
+                        setPets(resPet);
+                    }
+                    else {
+                        setPets([]);
+                    }
                     setError(null);
                     setMessage(null);
                 }
                 catch(err) {
-                    setError(err);
+                    setError(err.message);
 
                 }
         }
@@ -90,7 +90,7 @@ export default function AppointmentDetails() {
                 setMessage(null);
             }
             catch(err) {
-                setError(err);
+                setError(err.message);
             }
         }
         fetchRecord();
@@ -118,7 +118,7 @@ export default function AppointmentDetails() {
                                         <Row className="gx-3 gy-2">
                                             <Col xs={6} className="fw-bold">Veterinar</Col>
                                             <Col xs={6}>
-                                                {appointment.vet.firstName + ' ' + appointment.vet.lastName} (Clinica: {appointment.clinic ? appointment.clinic.name : 'Clinica nu mai este inregistrata'})
+                                                {appointment.vet?.firstName + ' ' + appointment.vet?.lastName} (Clinica: {appointment.clinic ? appointment.clinic.name : 'Clinica nu mai este inregistrata'})
                                             </Col>
                                         </Row>
                                         <Row className="mt-3">
@@ -129,6 +129,8 @@ export default function AppointmentDetails() {
                                                         name="pet"
                                                         value={appointment?.pet?.id || ''}
                                                         disabled={!isActive}
+                                                        style={{fontSize: "inherit"}}
+                                                        className="p-0"
                                                         onChange={(e) =>
                                                             setAppointment(prev => ({
                                                                 ...prev,
@@ -154,30 +156,47 @@ export default function AppointmentDetails() {
 
                                             </>
                                             )}
+                                        {
+                                            appointment.notes &&
+                                            <Row className="mt-3">
+                                                <Col xs={6} className="fw-bold">Mentiuni</Col>
+                                                <Col xs={6}>{appointment.notes}</Col>
+                                            </Row>
+                                        }
                                         <hr />
                                     </Form>
                                 </Card.Body>
                                 <Card.Footer>
-                                    {appointment.vet?.id === auth.user.id && !activeAppointment(appointment) && <>
-                                    {!appointment.done &&
-                                        <Button variant="success" className="m-2" onClick={openRecordModal}>Confirmare</Button> }
-                                    {message === null && appointment.done &&
-                                        <Row>
-                                            <Col>
-                                                <p className="fw-bold text-success pt-2">Efectuat</p>
-                                            </Col>
-                                            <Col className="text-end">
-                                                {record !== null && record.id !== 0 &&
-                                                    <Button variant="success" href={"/records/details"} onClick={() => {
-                                                    sessionStorage.setItem("recordId", record.id);
-                                                }}>Raport medical</Button>}
-                                                {record !== null && record.id === 0 &&
-                                                    <Button variant="success" className="m-2" onClick={openRecordModal}>Adaugare raport medical</Button>}
-                                            </Col>
-                                        </Row>
+                                    {appointment.vet?.id === auth.user.id && appointment.status.includes("BOOKED") && !activeAppointment(appointment) &&
+                                        <>
+                                        { !appointment.done && appointment.clinic && appointment.clinic.vets.some(vet => vet.id === auth.user.id) &&
+                                            <Button variant="success" className="m-2" onClick={openRecordModal}>Confirmare</Button>
+                                        }
+                                        </>
                                     }
-                                    </>}
-                                    {(appointment.pet.owner.id === auth.user.id || isAdmin(auth.user.roles)) && activeAppointment(appointment) && (
+                                        {
+                                            ((appointment.vet?.id === auth.user.id && appointment.status.includes("BOOKED") && !activeAppointment(appointment)) || (appointment.pet?.owner?.id === auth.user.id || appointment.currentOwner?.id === auth.user.id)) &&  message === null && appointment.done &&
+                                            <Row>
+                                                <Col>
+                                                    <p className="fw-bold text-success pt-2">Efectuat</p>
+                                                </Col>
+                                                <Col className="text-end">
+                                                    {
+                                                        record !== null && record.id !== 0 &&
+                                                        <Button variant="success"
+                                                                href={"/records/details"}
+                                                                onClick={() => sessionStorage.setItem("recordId", record.id)}>
+                                                            Raport medical
+                                                        </Button>
+                                                    }
+                                                    {
+                                                        record !== null && appointment.pet && record.id === 0 && appointment.clinic && appointment.clinic.vets.some(vet => vet.id === auth.user.id) &&
+                                                        <Button variant="success" className="m-2" onClick={openRecordModal}>Adaugare raport medical</Button>
+                                                    }
+                                                </Col>
+                                            </Row>
+                                        }
+                                    {(appointment.pet?.owner?.id === auth.user.id || isAdmin(auth.user.roles) || appointment.currentOwner?.id === auth.user.id) && activeAppointment(appointment) && (
                                         <div className="d-flex justify-content-between gap-2">
                                             {!isActive && <Button variant="primary" onClick={() => setIsActive(true)}>Editare</Button>}
                                             {isActive && (
@@ -196,7 +215,11 @@ export default function AppointmentDetails() {
                 <MedicalRecordForm open={showRecordModal} save={() => {
                     setShowRecordModal(false);
                     closeModalWithCounts();
+                    setShowRecordSuccess(true);
                 }} close={() => setShowRecordModal(false)} appointment={appointment}/>
+                <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message="Datele au fost modificate cu succes!"/>
+                <ErrorToast close={() => setShowError(false)} show={showError} message={error}/>
+                <SuccessToast close={() => setShowRecordSuccess(false)} show={showRecordSuccess} message="Raportul a fost creat cu succes!"/>
 
             </Container>
         </>

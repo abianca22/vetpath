@@ -46,7 +46,7 @@ public class Pet {
 
     private String photoUrl;
 
-    @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "pet")
     @JsonBackReference
     private List<MedicalRecord> medicalRecords;
 

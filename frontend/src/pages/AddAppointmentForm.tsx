@@ -72,7 +72,7 @@ export default function AddAppointmentForm(props) {
 
     useEffect(() => {
         const fetchClinics = async() => {
-            const res = await getAllClinics();
+            const res = await getAllClinics(null, null);
             setClinics(res);
             if (res.length !== 0 && selectedClinic === null) {
                 setSelectedClinic(res[0].id);
@@ -101,10 +101,13 @@ export default function AddAppointmentForm(props) {
     async function postData() {
         const saveApp = async () => {
             try {
-                await addAppointment(auth.token, parseInt(selectedSlot), selectedPet);
+                const res = await addAppointment(auth.token, parseInt(selectedSlot), selectedPet);
+                sessionStorage.setItem("sendEmailAppointmentId", res.id.toString());
                 setError(null);
+                props.showToast();
                 props.save();
             } catch (err) {
+                sessionStorage.removeItem("sendEmailAppointmentId");
                 setError(err.message);
             }
         }

@@ -16,6 +16,7 @@ public class ChatEntryDTO {
     private String botResponse;
     private String symptoms;
     private UserDTO approvedBy;
+    private MedicalRecordDTO medicalRecord;
     private PetDTO pet;
     @JsonFormat(pattern = "dd.MM.yyyy HH:mm")
     private LocalDateTime timestamp;

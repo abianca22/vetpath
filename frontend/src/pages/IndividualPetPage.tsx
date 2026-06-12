@@ -5,17 +5,18 @@ import {
     editPet,
     findPetByOwnerAndName,
     findUserByUsername,
-    getAllBreeds,
-    getAllTypes,
-    getBreedsByType
+    getAllTypes, getAllUsers, getAppointmentsByPet,
+    getBreedsByType, getRecordsByPet
 } from "../api/api.ts";
-import {Container, Row, Col, Card, Button, Form, FormSelect} from "react-bootstrap";
+import {Container, Row, Col, Card, Button, Form, FormSelect, Tabs, Tab, Table, Dropdown} from "react-bootstrap";
 import {useNavigate, useParams} from "react-router-dom";
 import type {PetDTO} from "../types.ts";
 import Confirm from "../components/Confirm.tsx";
-import {isAdmin} from "../api/roles.ts";
+import {isAdmin, isVeterinarian} from "../api/roles.ts";
 import {DatePicker} from "rsuite";
 import {format} from "date-fns";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 export default function IndividualPet() {
     const auth = useContext(AuthContext);
@@ -28,6 +29,14 @@ export default function IndividualPet() {
     const [types, setTypes] = useState(null);
     const [breeds, setBreeds] = useState(null);
     const [dob, setDob] = useState(null);
+    const [appointments, setAppointments] = useState([]);
+    const [records, setRecords] = useState([]);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [successMesssage, setSuccessMessage] = useState("");
+    const [petType, setPetType] = useState("");
+    const [users, setUsers] = useState([]);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     async function fetchBreedsByType(typeId) {
         try {
@@ -36,7 +45,9 @@ export default function IndividualPet() {
             setError(null);
         } catch (err) {
             setError(err.message);
+            setShowError(true);
             setBreeds([]);
+            console.error(err.message);
         }
     }
 
@@ -59,11 +70,18 @@ export default function IndividualPet() {
         if (pet) {
             const savePet = async () => {
                 try {
-                    await editPet(auth.token, {id: pet.id, name: name, breed: {id: breedId}, birthDate: petDob, weight: weight, gender: gender.toUpperCase()});
+                    await editPet(auth.token, {id: pet.id, name: name, breed: {id: breedId}, birthDate: petDob, weight: weight, gender: gender.toUpperCase(), owner: {id: selectedUser ? selectedUser.id : pet.owner.id}});
+                    setShowSuccess(true);
+                    setSuccessMessage("Datele au fost salvate cu succes");
                     setError(null);
+                    if (selectedUser && selectedUser.id !== pet.owner.id) {
+                        navigate(`/pets/${selectedUser.username}/${name}`);
+                    }
                 }
                 catch (err) {
                     setError(err.message);
+                    setShowError(true);
+                    console.error(err.message);
                 }
             }
             savePet();
@@ -80,6 +98,9 @@ export default function IndividualPet() {
 
 
     useEffect(() => {
+        if (!isAdmin(auth.user.roles) && auth.user.username !== params.username && !isVeterinarian(auth.user.roles)) {
+            navigate("/access-denied");
+        }
         const fetchPet = async () => {
             try {
                 const user = await findUserByUsername(auth.token, params.username);
@@ -87,46 +108,74 @@ export default function IndividualPet() {
                 const pets = await findPetByOwnerAndName(auth.token, params.username, params.petName);
                 const pet = pets.filter(p => p.name === params.petName)[0];
                 setPet(pet);
+                setPetType(pet.breed.petType.id.toString());
+                setSelectedUser(pet.owner);
                 setError(null);
                 console.log(pet);
+                const fetchBD = async () => {
+                    if (pet && pet.birthDate) {
+                        setDob(new Date(parseInt(pet.birthDate.split('.')[2]), parseInt(pet.birthDate.split('.')[1]) - 1, parseInt(pet.birthDate.split('.')[0])));
+                    }
+                }
+                fetchBD();
+                const fetchTypes = async () => {
+                    try {
+                        const res = await getAllTypes();
+                        setTypes(res);
+                        setError(null);
+                        await fetchBreedsByType(pet.breed.petType.id);
+
+                    }
+                    catch (err) {
+                        setError(err.message);
+                        setShowError(true);
+                        console.error(err);
+                    }
+                }
+                fetchTypes();
+                const fetchAppointments = async () => {
+                    try {
+                        const res = await getAppointmentsByPet(auth.token, pet.id);
+                        setAppointments(res);
+                    } catch (err) {
+                        setError(err.message);
+                        setShowError(true);
+                        setAppointments([]);
+                    }
+                }
+                fetchAppointments();
+                const fetchRecords = async () => {
+                    try {
+                        const res = await getRecordsByPet(auth.token, pet.id);
+                        setRecords(res);
+                    } catch (err) {
+                        setError(err.message);
+                        setShowError(true);
+                        console.error(err.message);
+                        setRecords([]);
+                    }
+                }
+                fetchRecords();
             } catch (err) {
                 setError(err.message);
+                setShowError(true);
+                console.error(err.message);
             }
         }
         fetchPet();
-        const fetchTypes = async () => {
-            try {
-                const res = await getAllTypes();
-                setTypes(res);
-                setError(null);
-                await fetchBreedsByType(res[0].id);
+        if (isAdmin(auth.user.roles)) {
+            const fetchUsers = async() => {
+                const resUsers = await getAllUsers(auth.token, null, null);
+                setUsers(resUsers);
             }
-            catch (err) {
-                setError(err.message);
-            }
+            fetchUsers();
         }
-        fetchTypes();
-        const fetchBreeds = async () => {
-            try {
-                const res = await getAllBreeds();
-                setBreeds(res);
-                setError(null);
-            } catch (err) {
-                setError(err.message);
-            }
-        }
-        fetchBreeds();
-        const fetchBD = async () => {
-            if (pet && pet.birthDate) {
-                setDob(new Date(parseInt(pet.birthDate.split('.')[2]), parseInt(pet.birthDate.split('.')[1]) - 1, parseInt(pet.birthDate.split('.')[0])));
-            }
-        }
-        fetchBD();
-    }, [params.username, params.petName, pet && pet.birthDate]);
+    }, [params.username, params.petName]);
 
     async function handleDelete() {
         try {
             await deletePet(auth.token, pet.id);
+            sessionStorage.setItem("deletedPetId", pet.id.toString());
             navigate(`/pets/${auth.user.username}`);
         }
         catch (err) {
@@ -138,9 +187,21 @@ export default function IndividualPet() {
         setShowDeleteConfirm(false);
     }
 
+    async function filterUsers(keyword) {
+        try {
+            const resUsers = await getAllUsers(auth.token, keyword, null);
+            setUsers(resUsers);
+        }
+        catch (err) {
+            setError(err.message);
+            setShowError(true);
+            console.error(err);
+        }
+    }
+
     return <>
         {error && <p className="text-danger">{error}</p>}
-        <Container className="d-flex justify-content-center align-items-start" style={{paddingTop: '2.5rem'}}>
+        <Container className="align-items-start" style={{paddingTop: '2.5rem'}}>
             <Row className="w-100 justify-content-center">
                 <Col xs={12} md={8} lg={6}>
                     { error && <p className="text-danger text-center"><small>{error}</small></p> }
@@ -163,18 +224,41 @@ export default function IndividualPet() {
                                     <Col xs={6} className="fw-bold d-flex align-items-center">Specie</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-type">
-                                            <FormSelect name="type" defaultValue={pet.breed?.petType?.id} onChange={(e) => {
+                                            <FormSelect
+                                                name="type" value={petType} onChange={(e) => {
                                                 const selectedTypeId = e.target.value;
                                                 e.persist();
-                                                fetchBreedsByType(selectedTypeId);
+                                                setPetType(selectedTypeId);
+                                                if (selectedTypeId !== '') {
+                                                    fetchBreedsByType(selectedTypeId);
+                                                }
                                             }} disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}>
+                                                <option value="" hidden={isActive}>Selectati o specie</option>
                                                 {types && types.length > 0 ? types.map(type => (
                                                     <option key={type.id} value={type.id}>{type.name}</option>
                                                 )) : <option disabled>Nu s-au găsit tipuri</option>}
                                             </FormSelect>
                                         </Form.Group>
                                         </Col>
-
+                                    <Col xs={6} className="fw-bold d-flex align-items-center" hidden={!isAdmin(auth.user.roles)}>
+                                        Proprietar
+                                    </Col>
+                                    <Col xs={6} hidden={!isAdmin(auth.user.roles)}>
+                                        <Form.Group style={{paddingLeft: '0.7rem'}} controlId="pet-owner">
+                                            <Dropdown>
+                                                <Dropdown.Toggle as="div">{selectedUser?.username}</Dropdown.Toggle>
+                                                <Dropdown.Menu>
+                                                        <Form.Control onChange={(e) => filterUsers(e.target.value)}></Form.Control>
+                                                    {
+                                                        users && users.length > 0 && users.map((user, index) =>
+                                                        <Dropdown.Item key={index} as="div" onClick={() => setSelectedUser(user)}>
+                                                            {user.username}
+                                                        </Dropdown.Item>)
+                                                    }
+                                                </Dropdown.Menu>
+                                            </Dropdown>
+                                        </Form.Group>
+                                        </Col>
                                     <Col xs={6} className="fw-bold d-flex align-items-center">Rasă</Col>
                                     <Col xs={6}>
                                         <Form.Group controlId="pet-breed">
@@ -245,6 +329,67 @@ export default function IndividualPet() {
                     ) }
                 </Col>
             </Row>
+            <Row className="w-100 justify-content-center mt-2">
+                <Col xs={12} md={8} lg={6}>
+                    <Tabs
+                        defaultActiveKey="appointments"
+                        className="mb-3"
+                        justify
+                    >
+                        <Tab eventKey="appointments" title="Istoric Programari">
+                            <Table>
+                                <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Clinica</th>
+                                    <th>Veterinar</th>
+                                    <th>Status</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {appointments && appointments.length > 0 ? appointments.map(app => (
+                                    <tr key={app.id} onClick={() => {
+                                        sessionStorage.setItem("appointmentId", app.id.toString());
+                                        navigate(`/appointments/details`);
+                                    }
+                                    } style={{cursor: 'pointer'}}>
+                                        <td>{app.slot}</td>
+                                        <td>{app.clinic?.name}</td>
+                                        <td>{app.vet?.firstName} {app.vet?.lastName}</td>
+                                        <td>{app.status.toLowerCase().includes("cancelled") ? 'Anulata' : 'Activa'}</td>
+                                    </tr>
+                                )) : <tr><td colSpan={4} className="text-center">Nu există programări</td></tr>}
+                                </tbody>
+                            </Table>
+                        </Tab>
+                        <Tab eventKey="history" title="Istoric Medical">
+                            <Table>
+                                <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Clinica</th>
+                                    <th>Veterinar</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {records && records.length > 0 ? records.map(record => (
+                                    <tr key={record.id} onClick={() => {
+                                        sessionStorage.setItem("recordId", record.id.toString());
+                                        navigate(`/records/details`);
+                                    }} style={{cursor: 'pointer'}}>
+                                        <td>{record.recordDate}</td>
+                                        <td>{record.appointment?.clinic?.name}</td>
+                                        <td>{record.vet?.firstName} {record.vet?.lastName}</td>
+                                    </tr>
+                                )) : <tr><td colSpan={3} className="text-center">Nu există rapoarte medicale</td></tr>}
+                                </tbody>
+                            </Table>
+                        </Tab>
+                    </Tabs>
+                </Col>
+            </Row>
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message={successMesssage}></SuccessToast>
+            <ErrorToast close={() => setShowError(false)} show={showError} messsage={error}></ErrorToast>
         </Container>
         <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti acest animal de companie?"/>
 

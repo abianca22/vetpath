@@ -28,6 +28,10 @@ public class Appointment {
     private User vet;
 
     @ManyToOne
+    @JoinColumn(name = "currentOwnerId")
+    private User currentOwner;
+
+    @ManyToOne
     @JoinColumn(name = "clinicId")
     private Clinic clinic;
 
@@ -52,4 +56,7 @@ public class Appointment {
     @OneToOne(mappedBy = "appointment")
     @JsonBackReference
     private MedicalRecord medicalRecord;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 }

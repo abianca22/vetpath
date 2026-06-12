@@ -22,9 +22,8 @@ public class MedicalRecord {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "pet_id", nullable = false)
+    @JoinColumn(name = "pet_id")
     @JsonManagedReference
-    @NotNull(message = "Camp obligatoriu")
     private Pet pet;
 
     @ManyToOne

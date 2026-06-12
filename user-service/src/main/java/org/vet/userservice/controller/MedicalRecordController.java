@@ -16,7 +16,6 @@ import org.vet.userservice.model.entity.Appointment;
 import org.vet.userservice.model.entity.MedicalRecord;
 import org.vet.userservice.model.entity.Pet;
 import org.vet.userservice.model.entity.User;
-import org.vet.userservice.model.enums.AppointmentStatus;
 import org.vet.userservice.model.mapper.AppointmentMapper;
 import org.vet.userservice.model.mapper.MedicalRecordMapper;
 import org.vet.userservice.model.mapper.UserMapper;
@@ -28,16 +27,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/records")
 public class MedicalRecordController {
     @Autowired
     private AppointmentService appointmentService;
-
-    @Autowired
-    private AppointmentMapper appointmentMapper;
 
     @Autowired
     private MedicalRecordMapper recordMapper;
@@ -49,17 +44,24 @@ public class MedicalRecordController {
     private UserService userService;
 
     @Autowired
-    private UserMapper userMapper;
-    @Autowired
     private UsefulFunctions usefulFunctions;
+
     @Autowired
     private PetService petService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getRecord(@AuthenticationPrincipal Jwt jwt, @PathVariable Integer id) {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         MedicalRecord medicalRecord = recordService.findById(id);
-        if (!medicalRecord.getPet().getOwner().getId().equals(currentUserDTO.getId()) && !usefulFunctions.isVet(currentUserDTO) && !usefulFunctions.isAdmin(currentUserDTO)) {
+        if (
+                (
+                        (medicalRecord.getPet() != null && medicalRecord.getPet().getOwner() != null && !medicalRecord.getPet().getOwner().getId().equals(currentUserDTO.getId()))
+                || (medicalRecord.getAppointment() != null && medicalRecord.getAppointment().getCurrentOwner() != null && !medicalRecord.getAppointment().getCurrentOwner().getId().equals(currentUserDTO.getId()))
+                )
+                        && !usefulFunctions.isVet(currentUserDTO) && !usefulFunctions.isAdmin(currentUserDTO)) {
             throw new AccessDeniedException("Doar clientul sau un medic veterinar poate vizualiza acest raport medical!");
         }
         return ResponseEntity.ok().body(recordMapper.toRecordDTO(medicalRecord));
@@ -70,7 +72,8 @@ public class MedicalRecordController {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         Appointment appointment = appointmentService.getById(id);
         MedicalRecord medicalRecord = recordService.findByAppointment(appointment);
-        if (medicalRecord != null && !usefulFunctions.isAdmin(currentUserDTO) && !medicalRecord.getPet().getOwner().getId().equals(currentUserDTO.getId()) && !usefulFunctions.isVet(currentUserDTO)) {
+        if (medicalRecord != null && !usefulFunctions.isAdmin(currentUserDTO) && ((medicalRecord.getPet() != null && medicalRecord.getPet().getOwner() != null && !medicalRecord.getPet().getOwner().getId().equals(currentUserDTO.getId())) || (medicalRecord.getAppointment() != null && medicalRecord.getAppointment().getCurrentOwner() != null && !medicalRecord.getAppointment()
+                .getCurrentOwner().getId().equals(currentUserDTO.getId()))) && !usefulFunctions.isVet(currentUserDTO)) {
             throw new AccessDeniedException("Doar clientul sau un medic veterinar poate vizualiza acest raport medical!");
         }
         else if (medicalRecord == null) return ResponseEntity.ok().body(recordMapper.toRecordDTO(MedicalRecord.builder().id(0).build()));
@@ -130,20 +133,26 @@ public class MedicalRecordController {
     ) {
         List<MedicalRecord> allRecords = recordService.findAllRecords();
         if (pet.isPresent()) {
-            allRecords = allRecords.stream().filter(record -> record.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
+            allRecords = allRecords.stream().filter(record -> record.getPet() != null && record.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
         }
         if (owner.isPresent() && !owner.get().isEmpty()) {
             allRecords = allRecords.stream().filter(record -> (
+                    record.getPet() != null && record.getPet().getOwner() != null && (
                     record.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())
                     || record.getPet().getOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase())
-                    || record.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
+                    || record.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase()))
+            ) || (
+                    record.getAppointment() != null && record.getAppointment().getCurrentOwner() != null && (
+                            record.getAppointment().getCurrentOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())
+                                    || record.getAppointment().getCurrentOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase())
+                                    || record.getAppointment().getCurrentOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase()))
             )).toList();
         }
         if (vet.isPresent() && !vet.get().isEmpty()) {
-            allRecords = allRecords.stream().filter(record -> (
+            allRecords = allRecords.stream().filter(record -> (record.getVet() != null && (
                     record.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase())
                             || record.getVet().getFirstName().toLowerCase().contains(vet.get().toLowerCase())
-                            || record.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase())
+                            || record.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase()))
             )).toList();
         }
         if (startDate.isPresent()) {

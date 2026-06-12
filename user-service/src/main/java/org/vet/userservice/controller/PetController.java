@@ -190,18 +190,12 @@ public class PetController {
             throw new NoDataFoundException("Utilizatorul cu username-ul " + userDTO.getUsername() + " nu a fost gasit");
         }
         var pets = petService.findPetByOwner(user);
-        Pet pet = null;
-        if (pets != null) {
-            pet = pets.stream().filter(p -> p.getId().equals(petId)).findFirst().orElse(null);
-        }
-        if (pet == null) {
-            throw new NoDataFoundException("Nu a fost gasit niciun animal de companie cu id-ul " + petId + " pentru utilizatorul " + user.getFirstName() + " " + user.getLastName());
-        }
+        Pet pet = petService.getPetById(petId);
         if (!pet.getOwner().getId().equals(user.getId()) && !usefulFunctions.isAdmin(userDTO)) {
             throw new AccessDeniedException("Nu aveti permisiunea de a edita acest animal de companie!");
         }
         var dateOfBirth = petDTO.getBirthDate();
-        if (dateOfBirth == null && dateOfBirth.isAfter(LocalDate.now())) {
+        if (dateOfBirth == null || dateOfBirth.isAfter(LocalDate.now())) {
             throw new InvalidDataException("Campul \"Data nasterii\" este invalid");
         }
         Pet updatedPet = petService.updatePet(petMapper.toPet(petDTO));
@@ -226,7 +220,8 @@ public class PetController {
         if (!pet.getOwner().getId().equals(user.getId()) && !usefulFunctions.isAdmin(userDTO)) {
             throw new AccessDeniedException("Nu aveti permisiunea de a sterge acest animal de companie!");
         }
-        medicalRecordService.deletePet(pet);
+
+        medicalRecordService.deletePet(pet, userService.getUserById(userDTO.getId()));
         return ResponseEntity.ok().build();
     }
 
@@ -251,6 +246,9 @@ public class PetController {
         if (petType == null) {
             throw new NoDataFoundException("Nu a fost gasit niciun tip de animal cu id-ul " + petTypeId);
         }
+        if (!petType.getBreeds().isEmpty() && petType.getBreeds().stream().anyMatch(breed -> !breed.getPets().isEmpty())) {
+            throw new InvalidDataException("Aceasta specie nu se poate sterge, deoarece rasele subordonate au animale asociate");
+        }
         petTypeService.deletePetType(petType);
         return ResponseEntity.ok().build();
     }
@@ -274,6 +272,9 @@ public class PetController {
         var breed = breedService.getBreedById(breedId);
         if (breed == null) {
             throw new NoDataFoundException("Nu a fost gasita nicio rasa cu id-ul " + breedId);
+        }
+        if (!breed.getPets().isEmpty()) {
+            throw new InvalidDataException("Aceasta rasa nu poate fi stearsa, deoarece are animale asociate");
         }
         breedService.deleteBreed(breed);
         return ResponseEntity.ok().build();

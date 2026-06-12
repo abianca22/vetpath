@@ -3,6 +3,7 @@ package org.vet.userservice.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.vet.userservice.model.entity.ChatEntry;
+import org.vet.userservice.model.entity.MedicalRecord;
 import org.vet.userservice.model.entity.Pet;
 import org.vet.userservice.model.entity.User;
 import org.vet.userservice.repository.ChatEntryRepository;
@@ -48,8 +49,7 @@ public class ChatEntryService {
         ChatEntry chatEntry = findById(id);
         if (chatEntry != null) {
             if (chatEntry.getMedicalRecord() != null) {
-                chatEntry.getMedicalRecord().setChatEntry(null);
-                medicalRecordRepository.save(chatEntry.getMedicalRecord());
+                medicalRecordRepository.deleteById(chatEntry.getMedicalRecord().getId());
             }
         }
         chatEntryRepository.deleteById(id);
@@ -58,4 +58,16 @@ public class ChatEntryService {
     public List<ChatEntry> findAllByOwner(User owner) {
         return chatEntryRepository.findByOwner(owner);
     }
+
+    public void clearApprovedBy(Integer id) {
+        ChatEntry chatEntry = findById(id);
+        chatEntry.setApprovedBy(null);
+        chatEntryRepository.save(chatEntry);
+    }
+
+    public ChatEntry getByRecord(MedicalRecord record) {
+        return chatEntryRepository.findByMedicalRecord(record).orElse(null);
+    }
+
+
 }

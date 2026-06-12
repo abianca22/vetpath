@@ -1,6 +1,7 @@
 package org.vet.userservice.controller;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.observation.ChatClientCompletionObservationHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +24,8 @@ import org.vet.userservice.service.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/chat")
@@ -47,6 +50,7 @@ public class ChatController {
     private ChatEntryMapper chatEntryMapper;
     @Autowired
     private MedicalRecordMapper medicalRecordMapper;
+    @Autowired
     private AppointmentService appointmentService;
 
     @PostMapping("/ask/{id}")
@@ -218,7 +222,9 @@ public class ChatController {
     }
 
     @GetMapping("/owner/{username}")
-    public ResponseEntity<?> getAllEntriesByOwner(@PathVariable String username, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getAllEntriesByOwner(@PathVariable String username, @AuthenticationPrincipal Jwt jwt,
+                                                  @RequestParam(value = "pet") Optional<Integer> pet,
+                                                  @RequestParam(value = "keyword") Optional<String> keyword) {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         User owner = userService.getUserByUsername(username);
         List<ChatEntry> chatEntries = chatEntryService.findAllByOwner(owner);
@@ -233,6 +239,24 @@ public class ChatController {
                 throw new AccessDeniedException("Doar proprietarii, administratorii si medicii care au mai evaluat in trecut cel putin unul dintre animalele acestui utilizator au drept de vizualizare a istoricului");
             }
         }
+        if (pet.isPresent()) {
+            chatEntries = chatEntries.stream().filter(chatEntry -> chatEntry.getPet() != null && chatEntry.getPet().getId().equals(pet.get())).collect(Collectors.toList());
+        }
+        if (keyword.isPresent()){
+            chatEntries = chatEntries.stream().filter(chatEntry -> chatEntry.getUserMessage().toLowerCase().contains(keyword.get().toLowerCase())
+            || chatEntry.getBotResponse().toLowerCase().contains(keyword.get())).toList();
+        }
         return ResponseEntity.ok().body(chatEntries.stream().map(chatEntryMapper::toChatEntryDTO).toList());
+    }
+
+    @GetMapping("/record/{id}")
+    public ResponseEntity<?> getEntryByRecord(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt) {
+        UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
+        MedicalRecord record = medicalRecordService.findById(id);
+        ChatEntry chatEntry = chatEntryService.getByRecord(record);
+        if (!usefulFunctions.isAdmin(currentUserDTO) && !usefulFunctions.isVet(currentUserDTO) && !chatEntry.getPet().getOwner().getId().equals(currentUserDTO.getId())) {
+            throw new AccessDeniedException("Doar membrii personalului si utilizatorul care a trimis intrebarea pot vizualiza raportul.");
+        }
+        return ResponseEntity.ok().body(chatEntryMapper.toChatEntryDTO(chatEntry != null ? chatEntry : new ChatEntry()));
     }
 }

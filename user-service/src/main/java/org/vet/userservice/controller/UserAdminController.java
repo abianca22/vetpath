@@ -16,8 +16,10 @@ import org.vet.userservice.model.entity.User;
 import org.vet.userservice.model.enums.AppointmentStatus;
 import org.vet.userservice.model.mapper.RoleMapper;
 import org.vet.userservice.model.mapper.UserMapper;
+import org.vet.userservice.other.UsefulFunctions;
 import org.vet.userservice.service.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,10 @@ public class UserAdminController {
     private AppointmentService appointmentService;
     @Autowired
     private ClinicService clinicService;
+    @Autowired
+    private UsefulFunctions usefulFunctions;
+    @Autowired
+    private MedicalRecordService medicalRecordService;
 
     public UserDTO decodeJWT(Jwt jwt) {
         List<String> rolesList = new ArrayList<>();
@@ -95,25 +101,33 @@ public class UserAdminController {
     @PutMapping("/{userId}/change-user-role")
     public ResponseEntity<UserDTO> changeUserRole(@PathVariable String userId,
                                            @RequestParam String role) {
-        String group = keycloakAdminService.getRoleGroups(role).get(0);
-        keycloakAdminService.removeAllGroupsFromUserExcept(userId, group);
-        keycloakAdminService.addGroupToUser(userId, group);
         var userRole = roleService.findByName(role);
         var oldUser = userService.getUserById(userId);
         if (userRole.equals(roleService.findByName("PET_OWNER"))) {
             List<Appointment> appointments = appointmentService.getByVet(oldUser);
             for (Appointment appointment : appointments) {
                 if (appointment.getStatus().equals(AppointmentStatus.BOOKED)) {
-                    throw new InvalidDataException("Nu se poate schimba rolul utilizatorului deoarece are programari rezervate!");
+                    if (appointment.getSlot().isAfter(LocalDateTime.now())) {
+                        throw new InvalidDataException("Nu se poate schimba rolul utilizatorului deoarece are programari rezervate!");
+                    }
+                    else {
+                        var currentNotes = "Utilizatorul " + oldUser.getUsername() + " nu mai detine rolul de medic veterinar.";
+                        appointmentService.updateAppointmentNotes(appointment.getId(), currentNotes);
+                    }
                 }
-                appointmentService.deleteSlot(appointment.getId());
+                else {
+                    appointmentService.deleteSlot(appointment.getId());
+                }
             }
             List<Clinic> clinics = clinicService.getClinicsByVetEmployee(oldUser);
             for (Clinic clinic : clinics) {
-                clinicService.removeVetFromClinic(clinic, oldUser);
+                clinicService.removeVetFromClinic(clinic, oldUser, "Utilizatorul nu mai detine rolul de medic veterinar in cadrul platformei");
             }
         }
         var user = userService.updateUserRole(userService.getUserById(userId), userRole);
+        String group = keycloakAdminService.getRoleGroups(role).get(0);
+        keycloakAdminService.removeAllGroupsFromUserExcept(userId, group);
+        keycloakAdminService.addGroupToUser(userId, group);
         var userDTO = userMapper.toUserDTO(user);
         userDTO.setRoles(user.getRoles().stream().map(r -> roleMapper.toRoleDTO(r)).collect(Collectors.toList()));
         return ResponseEntity.ok().body(userDTO);
@@ -129,8 +143,14 @@ public class UserAdminController {
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal Jwt jwt,  @PathVariable String userId) {
         UserDTO currentUserDTO = decodeJWT(jwt);
-        if (currentUserDTO.getRoles().contains("ADMIN") || currentUserDTO.getId().equals(userId)) {
-            userService.deleteUser(userId);
+        if (currentUserDTO.getRoles().contains(roleMapper.toRoleDTO(roleService.findByName("ADMIN"))) || currentUserDTO.getId().equals(userId)) {
+            var targetUser = userService.getUserById(userId);
+            if (usefulFunctions.isVet(userMapper.toUserDTO(targetUser))) {
+                medicalRecordService.deleteVet(userId);
+            }
+            else if (usefulFunctions.isPetOwner(userMapper.toUserDTO(targetUser))) {
+                medicalRecordService.deleteClient(userId);
+            }
             return ResponseEntity.ok().build();
         }
         throw new AccessDeniedException("Nu aveti permisiunea de a sterge acest utilizator!");
@@ -154,3 +174,5 @@ public class UserAdminController {
         return ResponseEntity.ok().body(userDTO);
     }
 }
+
+

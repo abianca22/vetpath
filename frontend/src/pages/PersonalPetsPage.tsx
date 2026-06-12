@@ -6,6 +6,8 @@ import {Button, Card, Col, Container, Row, Spinner, Badge, Image, Form} from "re
 import AddPetForm from "./AddPetForm.tsx";
 import type {PetDTO, RoleDTO, UserDTO} from "../types.ts";
 import {isPetOwner} from "../api/roles.ts";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 type PetWithPhoto = PetDTO & { photoUrl?: string };
 
@@ -25,6 +27,10 @@ export default function PersonalPets() {
     const [error, setError] = useState(null);
     const [types, setTypes] = useState([]);
     const [breeds, setBreeds] = useState([]);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+
 
     const openAddModal = () => {
         setShowAddModal(true);
@@ -72,6 +78,14 @@ export default function PersonalPets() {
     }
 
     useEffect(() => {
+        const checkPetDeletion = async () => {
+            if(sessionStorage.getItem("deletedPetId") !== null) {
+                setSuccessMessage("Datele au fost sterse cu succes");
+                setShowSuccess(true);
+                sessionStorage.removeItem("deletedPetId");
+            }
+        }
+        checkPetDeletion();
         const fetchTypes = async () => {
             try {
                 const res = await getAllTypes();
@@ -255,6 +269,8 @@ export default function PersonalPets() {
                     </>
                 </>
             )}
+            <SuccessToast show={showSuccess} close={() => setShowSuccess(false)} message={successMessage}/>
+            <ErrorToast show={showError} close={() => setShowError(false)} message={error}/>
         </Container>
 }
         </>

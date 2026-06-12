@@ -9,6 +9,7 @@ import AddSlotForm from "./AddSlotForm.tsx";
 import {DatePicker} from "rsuite";
 import {isVeterinarian} from "../api/roles.ts";
 import Confirm from "../components/Confirm.tsx";
+import moment from "moment";
 
 
 export default function SlotsList() {
@@ -42,6 +43,7 @@ export default function SlotsList() {
     const closeAddModalNoCount = () => {
         setShowAddModal(false);
     }
+
 
     const filterByStatus = (slots) => {
         console.log(slots);
@@ -83,6 +85,11 @@ export default function SlotsList() {
             } as const;
             endDate = new Intl.DateTimeFormat('en-GB', options).format(end).replaceAll('/', '.').replace(', ', ' ');
         }
+        if (start > end) {
+            setError("Data de final nu poate fi mai mica decat cea de start!");
+            setSearchParams({});
+            return;
+        }
         if (startDate !== null && endDate !== null) {
             setSearchParams({startDate: startDate, endDate: endDate});
         } else if (startDate !== null) {
@@ -114,6 +121,25 @@ export default function SlotsList() {
     }
 
     useEffect(() => {
+        const loadData = () => {
+            if (searchParams.get("startDate")) {
+                let arr = [];
+                arr.push(...(searchParams.get("startDate").split(" ")[0].split(".").reverse()));
+                arr.push(...(searchParams.get("startDate").split(" ")[1].split(":")));
+                arr = arr.map(str => parseInt(str));
+                const startDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4]);
+                setStart(startDate);
+            }
+            if(searchParams.get("endDate")) {
+                let arr = [];
+                arr.push(...(searchParams.get("endDate").split(" ")[0].split(".").reverse()));
+                arr.push(...(searchParams.get("endDate").split(" ")[1].split(":")));
+                arr = arr.map(str => parseInt(str));
+                const endDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4]);
+                setEnd(endDate);
+            }
+        }
+        loadData();
         if (params.username) {
             const findUser = async () => {
                 const res = await findUserByUsername(auth.token, params.username);
@@ -124,12 +150,17 @@ export default function SlotsList() {
             findUser();
         }
         const findSlots = async () => {
-            const res = await getSlots(auth.token, params && params.username ? params.username : auth.user.username, true, searchParams.get("startDate"), searchParams.get("endDate"));
+            const res = await getSlots(auth.token, params && params.username ? params.username : auth.user.username, true, searchParams.get("startDate") ? searchParams.get("startDate") : moment().format("DD.MM.YYYY HH:mm"), searchParams.get("endDate"));
             setSlots(filterByStatus(res));
         }
         findSlots();
     }, [params, searchParams, closeCount]);
 
+
+    function expiredSlot(app) {
+        const date = moment(`${app.slot.split(' ')[0].split('.').reverse().join('-')} ${app.slot.split(' ')[1]}`);
+        return date.isSameOrBefore(moment());
+    }
 
     return (
         <Container className="d-flex flex-grow-1" fluid>
@@ -198,12 +229,17 @@ export default function SlotsList() {
                             <tbody>
                             {
                                 slots && slots.length > 0 ? slots.map(slot => (
-                                    <tr key={slot.id}>
+                                    <tr key={slot.id} onClick={() => {
+                                        if (!slot.status.includes('AVAILABLE')) {
+                                            sessionStorage.setItem("appointmentId", slot.id);
+                                            navigate(`/appointments/details`);
+                                        }
+                                    }} className={!slot.status.includes('AVAILABLE') ? 'linked-row' : ''}>
                                         <td>{slot.slot}</td>
                                         <td>{slot.vet.username}</td>
                                         <td>{slot.clinic?.name}</td>
                                         <td>{slot.status.includes('AVAILABLE') ? 'Liber' : 'Ocupat'}</td>
-                                        <td>{auth.user.username === slot.vet.username &&
+                                        <td>{auth.user.username === slot.vet.username && slot.status.includes('AVAILABLE') && !expiredSlot(slot) &&
                                             <Button variant="danger" onClick={() => {
                                                 setCurrentSlotId(slot.id);
                                                 setShowConfirmDialog(true)
@@ -219,7 +255,7 @@ export default function SlotsList() {
                 </Col>
             </Row>
             <AddSlotForm open={showAddModal} save={closeAddModalWithCount} close={closeAddModalNoCount}/>
-            <Confirm open={showConfirmDialog} close={() => {closeConfirmDialog(); navigate("/slots");}} confirm={() => {handleDelete(currentSlotId); setCurrentSlotId(null);}} message="Doriti sa eliminati acest slot?"/>
+            <Confirm open={showConfirmDialog} close={() => {closeConfirmDialog(); navigate("/slots");}} confirm={() => {handleDelete(currentSlotId); setCurrentSlotId(null); navigate("/slots")}} message="Doriti sa eliminati acest slot?"/>
         </Container>
 
     );

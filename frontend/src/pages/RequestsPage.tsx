@@ -1,30 +1,42 @@
 import {useContext, useEffect, useState} from "react";
 import {AuthContext} from "../api/authContext.ts";
 import {Button, Col, Container, Row, Table} from "react-bootstrap";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 export default function SendRequestPage() {
     const auth = useContext(AuthContext);
     const [users, setUsers] = useState(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleAcceptRequest = (id) => {
-        const reqOpts = {
-            method: "POST",
-            headers: {
-                'Authorization': `Bearer ${auth.token}`
-            }
-        };
-        const acceptRequest = async () => {
-            await fetch(`http://localhost:8081/api/admin/users/${id}/change-role?approved=true`, reqOpts);
-            const res = await fetch(`http://localhost:8081/api/admin/users/requests`, {
-                method: "GET",
+        try {
+            const reqOpts = {
+                method: "POST",
                 headers: {
                     'Authorization': `Bearer ${auth.token}`
                 }
-            });
-            setUsers(await res.json()
-            );
-        };
-        acceptRequest();
+            };
+            const acceptRequest = async () => {
+                await fetch(`http://localhost:8081/api/admin/users/${id}/change-role?approved=true`, reqOpts);
+                const res = await fetch(`http://localhost:8081/api/admin/users/requests`, {
+                    method: "GET",
+                    headers: {
+                        'Authorization': `Bearer ${auth.token}`
+                    }
+                });
+                setUsers(await res.json()
+                );
+            };
+            acceptRequest();
+            setShowSuccess(true);
+        }
+        catch(err) {
+            setShowError(true);
+            setError(err);
+        }
     }
 
     const handleDeclineRequest = (id) => {
@@ -93,19 +105,10 @@ export default function SendRequestPage() {
                                         </tbody>
                                     </Table>
                                 </div>
-                            {/*<ListGroup>*/}
-                            {/*    {*/}
-                            {/*        (users && users.length > 0) ? users.map(user =>*/}
-                            {/*            <ListGroup.Item key={user.username}>Username: {user.username}*/}
-                            {/*                <Button variant="success" className="mx-2" onClick={() => {handleAcceptRequest(user.id)}}>Accepta</Button>*/}
-                            {/*                <Button variant="danger" onClick={() => {handleDeclineRequest(user.id)}}>Respinge</Button>*/}
-                            {/*            </ListGroup.Item>*/}
-                            {/*        ) :*/}
-                            {/*            <ListGroup.Item className="text-center">Nu exista cereri neprocesate</ListGroup.Item>*/}
-                            {/*    }*/}
-                            {/*</ListGroup>*/}
                             </Col>
                         </Row>
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message="Datele au fost modificate cu succes!"/>
+            <ErrorToast close={() => setShowError(false)} show={showError} message={error}/>
         </Container>
     );
 }

@@ -1,10 +1,19 @@
 import {useContext, useEffect, useState} from "react";
 import {AuthContext} from "../api/authContext.ts";
 import {Badge, Button, Card, Col, Container, Form, FormControl, Row, Table} from "react-bootstrap";
-import {updateData, deleteUser, getClinicsByVeterinarian} from "../api/api.ts";
+import {
+    updateData,
+    deleteUser,
+    getClinicsByVeterinarian,
+    getUpcomingOwnerAppointments,
+    getUpcomingVetAppointments
+} from "../api/api.ts";
 import VetRequest from "../components/VetRequest.tsx";
 import {isAdmin, isPetOwner, isVeterinarian} from "../api/roles.ts";
 import Confirm from "../components/Confirm.tsx";
+import {useNavigate} from "react-router-dom";
+import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
 
 export default function Profile() {
     const auth = useContext(AuthContext);
@@ -16,7 +25,12 @@ export default function Profile() {
     const [error, setError] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [clinics, setClinics] = useState([]);
-
+    const [upcomingOwnerAppointments, setUpcomingOwnerAppointments] = useState([]);
+    const [upcomingVetAppointments, setUpcomingVetAppointments] = useState([]);
+    const navigate = useNavigate();
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
+    const [deletionError, setDeletionError] = useState(null);
 
     useEffect(() => {
         const getClinics = async () => {
@@ -29,6 +43,30 @@ export default function Profile() {
             }
         }
         getClinics();
+
+        const fetchUpcomingOwnerAppointments = async () => {
+            try {
+                const res = await getUpcomingOwnerAppointments(auth.token, 5);
+                setUpcomingOwnerAppointments(res);
+            }
+            catch(err) {
+                console.log(err);
+            }
+        }
+        fetchUpcomingOwnerAppointments();
+
+        const fetchUpcomingVetAppointments = async () => {
+            try {
+                const res = await getUpcomingVetAppointments(auth.token, 5);
+                setUpcomingVetAppointments(res);
+            }
+            catch(err) {
+                console.log(err);
+            }
+        }
+        if (isVeterinarian(auth.user.roles)) {
+            fetchUpcomingVetAppointments();
+        }
     }, [auth.token]);
 
     const closeDeleteConfirm = () => {
@@ -60,8 +98,15 @@ export default function Profile() {
     }
 
     async function deleteAccount() {
-        auth.logout();
-        await deleteUser(auth.token, auth);
+        try {
+            await deleteUser(auth.token, auth);
+            auth.logout();
+            setDeletionError(null);
+        }
+        catch(err) {
+            setDeletionError(err.message);
+            setShowError(true);
+        }
     }
 
     return (
@@ -177,6 +222,79 @@ export default function Profile() {
                             }
                             <br/>
                             <Button variant="secondary" href={`/pets/${auth.user.username}`} className="mt-2">Animalele mele</Button>
+                            <h4 className="mt-5 mb-2 text-center">Programari viitoare</h4>
+                            <Table className="mb-5">
+                                <thead>
+                                <tr>
+                                    <td>Data</td>
+                                    <th>Animal de companie</th>
+                                    <th>Veterinar</th>
+                                    <th>Clinica</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {
+                                    upcomingOwnerAppointments && upcomingOwnerAppointments.length > 0 ? upcomingOwnerAppointments.map(app => (
+                                        <tr key={app.id}>
+                                            <td className="linked-row" onClick={() => {
+                                                sessionStorage.setItem("appointmentId", app.id.toString());
+                                                navigate("/appointments/details");
+                                            }}>{app.slot}</td>
+                                            <td className="linked-row" onClick={() => {
+                                                navigate(`/pets/${auth.user.username}/${app.pet.name}`);}}>{app.pet.name}</td>
+                                            <td className="linked-row" onClick={() => {
+                                                navigate(`/user/${auth.user.username}`);}}>{app.vet.firstName} {app.vet.lastName}</td>
+                                            <td className="linked-row" onClick={() => {
+                                                navigate(`/clinics/${app.clinic.id}`);}}>{app.clinic.name}</td>
+                                        </tr>
+                                    )) : <tr><td colSpan={4} className="text-center">Nu exista programari viitoare</td></tr>
+                                }
+                                </tbody>
+                            </Table>
+                            {
+                                isVeterinarian(auth.user.roles) && (
+                                    <>
+                                        <h4 className="mt-5 mb-2 text-center">Programari viitoare ca veterinar</h4>
+                                        <Table className="mb-5">
+                                            <thead>
+                                            <tr>
+                                                <td>Data</td>
+                                                <th>Animal de companie</th>
+                                                <th>Proprietar</th>
+                                                <th>Clinica</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {
+                                                upcomingVetAppointments && upcomingVetAppointments.length > 0 ? upcomingVetAppointments.map(app => (
+                                                    <tr key={app.id}>
+                                                        <td onClick={() => {
+                                                            sessionStorage.setItem("appointmentId", app.id.toString());
+                                                            navigate("/appointments/details");
+                                                        }}
+                                                        className="linked-row">{app.slot}</td>
+                                                        <td className="linked-row" onClick={() => {
+                                                            if (app.pet && app.pet.owner) {
+                                                            navigate(`/pets/${app.pet.owner.username}/${app.pet.name}`);}
+                                                        }}>{app.pet?.name}</td>
+                                                        <td className="linked-row" onClick={() => {
+                                                            if (app.pet && app.pet.owner) {
+                                                            navigate(`/user/${app.pet.owner.username}`);
+                                                            }}}
+                                                        >{app.pet?.owner?.firstName} {app.pet?.owner?.lastName}</td>
+                                                        <td className="linked-row" onClick={() => {
+                                                            if (app.clinic) {
+                                                            navigate(`/clinics/${app.clinic.id}`);
+                                                            }}}
+                                                        >{app.clinic?.name}</td>
+                                                    </tr>
+                                                )) : <tr><td colSpan={4} className="text-center">Nu exista programari viitoare</td></tr>
+                                            }
+                                            </tbody>
+                                        </Table>
+                                    </>
+                                )
+                            }
                         </Card.Body>
                     </Card>
                     <br/>
@@ -184,6 +302,8 @@ export default function Profile() {
             </Row>
         </Container>
             <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={deleteAccount} message="Sunteti sigur ca doriti stergerea contului? Aceasta actiune este iremediabila."/>
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message=""/>
+            <ErrorToast close={() => setShowError(false)} show={showError} message={deletionError}/>
         </>
     );
 }

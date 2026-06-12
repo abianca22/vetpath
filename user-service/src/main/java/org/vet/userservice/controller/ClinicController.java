@@ -17,6 +17,8 @@ import org.vet.userservice.model.mapper.*;
 import org.vet.userservice.other.UsefulFunctions;
 import org.vet.userservice.service.*;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -93,7 +95,7 @@ public class ClinicController {
         }
         else {
             Clinic clinic = clinicService.getClinicById(id);
-            return ResponseEntity.ok().body(clinicMapper.toClinicDTO(clinicService.removeVetFromClinic(clinic, user)));
+            return ResponseEntity.ok().body(clinicMapper.toClinicDTO(clinicService.removeVetFromClinic(clinic, user, "Parasire clinica")));
         }
     }
 
@@ -103,8 +105,17 @@ public class ClinicController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<?> getAllClinics() {
-        return ResponseEntity.ok().body(clinicService.getAllClinics().stream().map(clinic -> clinicMapper.toClinicDTO(clinic)).collect(Collectors.toList()));
+    public ResponseEntity<?> getAllClinics(@RequestParam(value = "name") Optional<String> name, @RequestParam(value = "employee") Optional<String> employee) {
+        List<Clinic> clinics = clinicService.getAllClinics();
+        if (name.isPresent()) {
+            clinics = clinics.stream().filter(clinic -> clinic.getName().toLowerCase().contains(name.get())).collect(Collectors.toList());
+        }
+        if (employee.isPresent()) {
+            clinics = clinics.stream().filter(clinic -> clinic.getVets().stream().anyMatch(vet -> vet.getUsername().toLowerCase().contains(employee.get().toLowerCase())
+            || vet.getFirstName().toLowerCase().contains(employee.get().toLowerCase())
+            || vet.getLastName().toLowerCase().contains(employee.get().toLowerCase()))).collect(Collectors.toList());
+        }
+        return ResponseEntity.ok().body(clinics.stream().map(clinic -> clinicMapper.toClinicDTO(clinic)).collect(Collectors.toList()));
     }
 
     @PutMapping("/update/{id}")

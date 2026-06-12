@@ -1,5 +1,5 @@
 import {createContext, type Dispatch, type SetStateAction} from "react";
-import type {UserDTO} from "../types.ts";
+import type {NotificationDTO, UserDTO} from "../types.ts";
 
 interface AuthenticationContext {
     user: UserDTO | null;
@@ -8,6 +8,8 @@ interface AuthenticationContext {
     logout: () => void;
     login: () => void;
     loading: boolean;
+    notifications: NotificationDTO[];
+    setNotifications: Dispatch<SetStateAction<NotificationDTO[] | []>>
 }
 
 export const AuthContext = createContext<AuthenticationContext | null>(null);

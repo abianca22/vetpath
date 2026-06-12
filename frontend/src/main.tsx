@@ -2,11 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import 'bootstrap/dist/css/bootstrap.css';
+import 'rsuite/dist/rsuite.css';
+import './custom.css';
 import {AuthProvider} from "./components/AuthenticationProvider.tsx";
 import keycloak from "./api/keycloak.ts";
-import 'bootstrap/dist/css/bootstrap.css';
-import './custom.css';
-import 'rsuite/dist/rsuite.css';
 import {BrowserRouter} from "react-router-dom";
 
 keycloak.init({ onLoad: "check-sso", pkceMethod: 'S256', responseMode: "query", checkLoginIframe: false }).then(() => {

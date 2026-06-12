@@ -20,6 +20,7 @@ export default function AddClinicForm(props) {
                 await addClinic(auth.token, {name: name, address: address, phoneNumber: phone});
                     setError(null);
                     props.save();
+                    props.showToast();
                 } catch (err) {
                     setError(err.message);
                 }
@@ -46,14 +47,14 @@ export default function AddClinicForm(props) {
                         <Col xs={12} md={6}>
                             <Form.Group controlId="clinic-name">
                                 <Form.Label className="fw-medium mb-1">Denumire</Form.Label>
-                                <Form.Control name="name" type="text" />
+                                <Form.Control name="name" type="text" required/>
                             </Form.Group>
                         </Col>
 
                         <Col xs={12} md={6}>
                             <Form.Group controlId="clinic-address">
                                 <Form.Label className="fw-medium mb-1">Adresa</Form.Label>
-                                <Form.Control name="address" type="text" />
+                                <Form.Control name="address" type="text" required/>
                             </Form.Group>
                         </Col>
                     </Row>
@@ -61,7 +62,7 @@ export default function AddClinicForm(props) {
                         <Col xs={12} md={6}>
                             <Form.Group controlId="clinic-phone">
                                 <Form.Label className="fw-medium mb-1">Telefon</Form.Label>
-                                <Form.Control name="phone" type="text" />
+                                <Form.Control name="phone" type="text" required/>
                             </Form.Group>
                         </Col>
                     </Row>

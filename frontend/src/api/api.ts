@@ -103,6 +103,13 @@ export const getAllVeterinarians = async (token, user): Promise<Array<UserDTO>> 
     return await res.json();
 }
 
+export const getVeterinarians = async (): Promise<Array<UserDTO>> => {
+    const res = await fetch(`http://localhost:8081/api/users/veterinarians`, {
+        headers: { }
+    });
+    return await res.json();
+}
+
 export const changeRole = async (token, id, role): Promise<UserDTO> => {
     const res = await fetch(`http://localhost:8081/api/admin/users/${id}/change-user-role?role=${role}`, {
         method: "PUT",
@@ -405,10 +412,19 @@ export const leaveClinic = async(token, username, clinicId): Promise<ClinicDTO> 
     return await res.json();
 }
 
-export const getSlots = async(token, username, allSlots = true, start = null, end = null): Promise<Array<AppointmentDTO>> => {
-    const res = await fetch(`http://localhost:8081/api/appointments/${username}?allSlots=${allSlots}${
-        start && end ? `&startDate=${start}&endDate=${end}` : (start ? `&startDate=${start}` : (end ? `&endDate=${end}` : ''))
-    }`, {
+export const getSlots = async(token, username, allSlots = true, start = null, end = null, desc = false): Promise<Array<AppointmentDTO>> => {
+    const queryParams = [];
+    queryParams.push(`allSlots=${allSlots}`);
+    if (start !== null && start.trim() !== '') {
+        queryParams.push(`startDate=${start}`);
+    }
+    if (end !== null && end.trim() !== '') {
+        queryParams.push(`endDate=${end}`);
+    }
+    if (desc) {
+        queryParams.push(`desc=${desc}`);
+    }
+    const res = await fetch(`http://localhost:8081/api/appointments/${username}${queryParams.length > 0 ? `?${queryParams.join('&')}` : ''}`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${token}`
@@ -959,4 +975,37 @@ export const updateNotifications = async(token): Promise<Array<NotificationDTO>>
     return await res.json();
 }
 
+export const updatePetType = async(token, petType) => {
+    const res = await fetch(`http://localhost:8081/api/pets/types/${petType.id}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(petType)
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
+
+export const updateBreed = async(token, breed) => {
+    const res = await fetch(`http://localhost:8081/api/pets/breeds/${breed.id}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(breed)
+    });
+
+    if (!res.ok) {
+        throw new Error(await res.text());
+    }
+
+    return await res.json();
+}
 

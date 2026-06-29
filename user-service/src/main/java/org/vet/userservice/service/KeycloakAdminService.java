@@ -114,9 +114,7 @@ public class KeycloakAdminService {
 
     public void addGroupToUser(String userId, String groupName) {
         String token = getAdminToken();
-
         String groupId = getGroupIdByGroupName(groupName, token);
-
         String url = keycloakUrl + "/admin/realms/" + realm + "/users/" + userId + "/groups/" + groupId;
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);

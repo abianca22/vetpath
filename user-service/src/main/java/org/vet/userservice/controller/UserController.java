@@ -163,6 +163,16 @@ public class UserController {
         return ResponseEntity.ok().body(userDTO);
     }
 
+    @GetMapping("/veterinarians")
+    public ResponseEntity<List<UserDTO>> getVeterinarians() {
+        List<User> users = userService.getAllUsers();
+        List<UserDTO> vets = users.stream()
+                .filter(user -> (user.getRoles().contains(roleService.findByName("VETERINARIAN"))))
+                .map(userMapper::toUserDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok().body(vets);
+    }
+
     @GetMapping("/admin-vet")
     public ResponseEntity<List<UserDTO>> getVeterinariansAndAdmins(@RequestParam(value = "user") Optional<String> userString) {
         List<User> users = userService.getAllUsers();

@@ -47,6 +47,10 @@ public class AppointmentService {
         return appointmentRepository.findAppointmentsByVetOrderBySlotDesc(vet);
     }
 
+    public List<Appointment> getByVetAsc(User vet) {
+        return appointmentRepository.findAppointmentsByVetOrderBySlotAsc(vet);
+    }
+
     private boolean validDateChecker(LocalDateTime date) {
         return date.isAfter(LocalDateTime.now());
     }
@@ -239,13 +243,23 @@ public class AppointmentService {
         appointmentRepository.deleteAllByPet(pet);
     }
 
-    public List<Appointment> getTopKByOwner(User owner, Integer k, LocalDateTime currentDate) {
-        return appointmentRepository.findTopKByOwnerOrderBySlotDesc(owner, k, currentDate
-        );
+    public List<Appointment> getTopKByOwner(User owner, Integer k, LocalDateTime currentDate, Boolean asc) {
+        if (!asc) {
+            return appointmentRepository.findTopKByOwnerOrderBySlotDesc(owner, k, currentDate
+            );
+        }
+        else {
+            return appointmentRepository.findTopKByOwnerOrderBySlotAsc(owner, k, currentDate);
+        }
     }
 
-    public List<Appointment> getTopKByVet(User vet, Integer k, LocalDateTime currentDate) {
-        return appointmentRepository.findTopKByVetOrderBySlotDesc(vet, k, currentDate);
+    public List<Appointment> getTopKByVet(User vet, Integer k, LocalDateTime currentDate, Boolean asc) {
+        if (!asc) {
+            return appointmentRepository.findTopKByVetOrderBySlotDesc(vet, k, currentDate);
+        }
+        else {
+            return appointmentRepository.findTopKByVetOrderBySlotAsc(vet, k, currentDate);
+        }
     }
 
     public Appointment updateAppointmentNotes(Integer id, String notes) {

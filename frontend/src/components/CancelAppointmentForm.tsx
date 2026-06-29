@@ -1,78 +1,76 @@
-import {useContext, useEffect, useState} from "react";
-import {Button, Form, Modal, Row, Col, FormControl} from "react-bootstrap";
-
-import {AuthContext} from "../api/authContext.ts";
-import {cancelAppointment} from "../api/api.ts";
-import {FormControlLabel, Switch} from "@mui/material";
+import { useContext, useState } from "react";
+import { AuthContext } from "../api/authContext.ts";
+import { cancelAppointment } from "../api/api.ts";
+import ModalShell, { ErrorMsg, Field, SecondaryBtn, VetInput } from "./ModalShell.tsx";
 
 export default function CancelAppointmentForm(props) {
     const auth = useContext(AuthContext);
-    const [error, setError] = useState(null);
-    const [checked, setChecked] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [recreate, setRecreate] = useState(true);
 
-    function handleChange() {
-        setChecked(!checked);
-    }
+    const isVetOwner = props.slot && props.slot.vet?.id === auth.user?.id;
 
-    useEffect(() => {
-    }, [auth.token]);
-
-
-
-    async function postData(formData) {
-        const cancelReason = formData.get("reason");
+    async function handleSubmit(e) {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const cancelReason = fd.get("reason") as string;
         if (!props.slot) return;
         try {
-            const res = await cancelAppointment(auth.token, auth.user, props.slot.id,auth.user.id === props.slot.vet.id ? checked : true, cancelReason);
+            const res = await cancelAppointment(auth.token, auth.user, props.slot.id, isVetOwner ? recreate : true, cancelReason);
             setError(null);
-            sessionStorage.setItem("sendEmailAppointmentId", res.id.toString())
-            props.showToast();
+            sessionStorage.setItem("sendEmailAppointmentId", res.id.toString());
+            props.showToast?.();
             props.save();
-        }
-        catch(err) {
-            sessionStorage.removeItem("sendEmailAppointmentId")
-            setError(err);
+        } catch (err) {
+            sessionStorage.removeItem("sendEmailAppointmentId");
+            setError(String(err));
         }
     }
 
-    function handleSubmit(e) {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        postData(fd);
-    }
+    const close = () => { props.close(); setError(null); };
 
-    return <>
-        <Modal show={props.open} onHide={() => {props.close(); setError(null)}} centered>
-            <Modal.Header closeButton className="border-bottom pb-3">
-                <Modal.Title className="fw-semibold">Anulare programare</Modal.Title>
-            </Modal.Header>
-            <Modal.Body className="px-4 py-3">
-                {error && error.split('\n').map(err => <p key={err.split(' ')[0]} className="text-danger mb-1"><small>{err}</small>
-                </p>)}
-                <Form id="cancel-appointment-form" onSubmit={handleSubmit}>
-                    <Row className="g-3">
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="reason">
-                                <Form.Label className="fw-medium mb-1">Motivul anularii</Form.Label>
-                                <FormControl name="reason" type="text" aria-label="Reason"/>
-                            </Form.Group>
-                        </Col>
-                        {
-                            (props.slot && props.slot.vet.id === auth.user.id) && (
-                                <Col xs={12} md={6}>
-                                    <Form.Group controlId="recreate-slot">
-                                        <FormControlLabel control={<Switch defaultChecked checked={checked} onChange={handleChange}/>} label={checked ? "Doresc eliberarea intervalului" : "Doresc eliminarea intervalului"}></FormControlLabel>
-                                    </Form.Group>
-                                </Col>
-                            )
-                        }
-                    </Row>
-                </Form>
-            </Modal.Body>
-            <Modal.Footer className="border-top pt-3">
-                <Button variant="secondary" onClick={() => {props.close(); setError(null)}}>Renuntare</Button>
-                <Button type="submit" variant="primary" form="cancel-appointment-form">Stergere</Button>
-            </Modal.Footer>
-        </Modal>
-    </>
+    return (
+        <ModalShell
+            open={props.open}
+            onClose={close}
+            title="Anulare programare"
+            maxWidth={460}
+            footer={<>
+                <SecondaryBtn onClick={close}>Renunțare</SecondaryBtn>
+                <button type="submit" form="cancel-appointment-form"
+                    style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#b91c1c")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#dc2626")}>
+                    Anulează programarea
+                </button>
+            </>}
+        >
+            <form id="cancel-appointment-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <ErrorMsg error={error} />
+
+                <Field label="Motivul anulării" htmlFor="reason">
+                    <VetInput id="reason" name="reason" type="text" placeholder="ex: Nu mai pot ajunge..." />
+                </Field>
+
+                {isVetOwner && (
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14, color: "#374151", userSelect: "none" }}>
+                        <div
+                            onClick={() => setRecreate(r => !r)}
+                            style={{
+                                width: 40, height: 22, borderRadius: 11, background: recreate ? "#1d9e75" : "#cbd5e1",
+                                position: "relative", transition: "background .2s", flexShrink: 0, cursor: "pointer",
+                            }}
+                        >
+                            <div style={{
+                                position: "absolute", top: 3, left: recreate ? 21 : 3,
+                                width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                                transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                            }} />
+                        </div>
+                        {recreate ? "Doresc eliberarea intervalului" : "Doresc eliminarea intervalului"}
+                    </label>
+                )}
+            </form>
+        </ModalShell>
+    );
 }

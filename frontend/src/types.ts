@@ -71,6 +71,7 @@ export interface MedicalRecordDTO {
     symptoms: string;
     treatment: string;
     recordDate: string;
+    appointment: AppointmentDTO;
 }
 
 export interface ChatEntryDTO {

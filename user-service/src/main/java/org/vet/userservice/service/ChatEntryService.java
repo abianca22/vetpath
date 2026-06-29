@@ -49,7 +49,10 @@ public class ChatEntryService {
         ChatEntry chatEntry = findById(id);
         if (chatEntry != null) {
             if (chatEntry.getMedicalRecord() != null) {
-                medicalRecordRepository.deleteById(chatEntry.getMedicalRecord().getId());
+                MedicalRecord medicalRecord = chatEntry.getMedicalRecord();
+                chatEntry.setMedicalRecord(null);
+                chatEntryRepository.save(chatEntry);
+                medicalRecordRepository.deleteById(medicalRecord.getId());
             }
         }
         chatEntryRepository.deleteById(id);

@@ -63,8 +63,8 @@ public class AppointmentController {
     }
 
     @GetMapping("/{username}")
-    public ResponseEntity<?> getSlotByVet(@PathVariable String username, @RequestParam(value="allSlots", required= true) Boolean allSlots, @RequestParam(value="startDate", required = false) Optional<String> startDate, @RequestParam(value="endDate", required = false) Optional<String> endDate) {
-        List<Appointment> appointments = appointmentService.getByVet(userService.getUserByUsername(username));
+    public ResponseEntity<?> getSlotByVet(@PathVariable String username, @RequestParam(value="allSlots", required=true) Boolean allSlots, @RequestParam(value="startDate", required = false) Optional<String> startDate, @RequestParam(value="endDate", required = false) Optional<String> endDate, @RequestParam(value="desc", required = false) Optional<Boolean> desc) {
+        List<Appointment> appointments = (desc.isPresent() && !desc.get()) ? appointmentService.getByVet(userService.getUserByUsername(username)) : appointmentService.getByVetAsc(userService.getUserByUsername(username));
         if (!allSlots) {
             if (startDate.isPresent()) {
                 List<Integer> startDateComponents = new ArrayList<>(List.of(Arrays.stream(startDate.get().split(" ")[0].split("\\.")).map(Integer::parseInt).toArray(Integer[]::new)));
@@ -189,15 +189,15 @@ public class AppointmentController {
             || appointment.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase())).toList();
         }
         if (pet.isPresent() && !pet.get().isEmpty()) {
-            appointments = appointments.stream().filter(appointment -> appointment.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
+            appointments = appointments.stream().filter(appointment -> appointment.getPet() != null && appointment.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();
         }
         if (owner.isPresent() && !owner.get().isEmpty()) {
-            appointments = appointments.stream().filter(appointment -> appointment.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
+            appointments = appointments.stream().filter(appointment -> appointment.getPet() != null && (appointment.getPet().getOwner().getLastName().toLowerCase().contains(owner.get().toLowerCase())
             || appointment.getPet().getOwner().getFirstName().toLowerCase().contains(owner.get().toLowerCase())
-            || appointment.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase())).toList();
+            || appointment.getPet().getOwner().getUsername().toLowerCase().contains(owner.get().toLowerCase()))).toList();
         }
         if (clinic.isPresent()) {
-            appointments = appointments.stream().filter(appointment -> appointment.getClinic().getId().equals(clinic.get())).toList();
+            appointments = appointments.stream().filter(appointment -> appointment.getClinic() != null && appointment.getClinic().getId().equals(clinic.get())).toList();
         }
         if (status.isPresent()) {
             if (status.get()) {
@@ -215,9 +215,9 @@ public class AppointmentController {
             appointments = appointments.stream().filter(appointment -> appointment.getSlot().isBefore(LocalDateTime.of(endDateComponents.get(2), endDateComponents.get(1), endDateComponents.get(0), 23, 59))).toList();
         }
         if (cancelledBy.isPresent() && !cancelledBy.get().isEmpty()) {
-            appointments = appointments.stream().filter(appointment -> appointment.getCancelledBy().getLastName().toLowerCase().contains(cancelledBy.get().toLowerCase())
+            appointments = appointments.stream().filter(appointment -> appointment.getCancelledBy() != null  && (appointment.getCancelledBy().getLastName().toLowerCase().contains(cancelledBy.get().toLowerCase())
             || appointment.getCancelledBy().getFirstName().contains(cancelledBy.get().toLowerCase())
-            || appointment.getCancelledBy().getUsername().contains(cancelledBy.get())).toList();
+            || appointment.getCancelledBy().getUsername().contains(cancelledBy.get()))).toList();
         }
         return ResponseEntity.ok().body(appointments.stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
@@ -268,15 +268,15 @@ public class AppointmentController {
     }
 
     @GetMapping("/upcoming-owner/{k}")
-    public ResponseEntity<?> getUpcomingAppointmentsByOwner(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getUpcomingAppointmentsByOwner(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt, @RequestParam(value="asc") Optional<Boolean> asc) {
         UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
-        return ResponseEntity.ok().body(appointmentService.getTopKByOwner(userService.getUserById(currentUser.getId()), k, LocalDateTime.now()).stream().map(appointmentMapper::toAppointmentDTO).toList());
+        return ResponseEntity.ok().body(appointmentService.getTopKByOwner(userService.getUserById(currentUser.getId()), k, LocalDateTime.now(), asc.orElse(true)).stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
 
     @GetMapping("/upcoming-vet/{k}")
-    public ResponseEntity<?> getUpcomingAppointmentsByVet(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> getUpcomingAppointmentsByVet(@PathVariable Integer k, @AuthenticationPrincipal Jwt jwt, @RequestParam(value="asc") Optional<Boolean> asc) {
         UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
-        return ResponseEntity.ok().body(appointmentService.getTopKByVet(userService.getUserById(currentUser.getId()), k, LocalDateTime.now()).stream().map(appointmentMapper::toAppointmentDTO).toList());
+        return ResponseEntity.ok().body(appointmentService.getTopKByVet(userService.getUserById(currentUser.getId()), k, LocalDateTime.now(), asc.orElse(true)).stream().map(appointmentMapper::toAppointmentDTO).toList());
     }
 
     @GetMapping("/{id}/send-email")

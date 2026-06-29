@@ -1,397 +1,495 @@
-import {useContext, useEffect, useState} from "react";
-import {AuthContext} from "../api/authContext.ts";
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../api/authContext.ts";
 import {
-    deletePet,
-    editPet,
+    deletePet, editPet,
     findPetByOwnerAndName,
-    findUserByUsername,
-    getAllTypes, getAllUsers, getAppointmentsByPet,
-    getBreedsByType, getRecordsByPet
+    findUserByUsername, getAllUsers,
+    getAppointmentsByPet,
+    getRecordsByPet,
 } from "../api/api.ts";
-import {Container, Row, Col, Card, Button, Form, FormSelect, Tabs, Tab, Table, Dropdown} from "react-bootstrap";
-import {useNavigate, useParams} from "react-router-dom";
-import type {PetDTO} from "../types.ts";
+import { useNavigate, useParams } from "react-router-dom";
+import type { PetDTO } from "../types.ts";
 import Confirm from "../components/Confirm.tsx";
-import {isAdmin, isVeterinarian} from "../api/roles.ts";
-import {DatePicker} from "rsuite";
-import {format} from "date-fns";
+import AddPetForm from "./AddPetForm.tsx";
+import { isAdmin, isVeterinarian } from "../api/roles.ts";
 import SuccessToast from "../components/SuccessToast.tsx";
 import ErrorToast from "../components/ErrorToast.tsx";
+import moment from "moment";
+import {Autocomplete, TextField} from "@mui/material";
+
+
+function calcAge(birthDate: string | null): string | null {
+    if (!birthDate) return null;
+    const [d, m, y] = birthDate.split(".").map(Number);
+    const birth = new Date(y, m - 1, d);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const months = now.getMonth() - birth.getMonth();
+    const days = now.getDay() - birth.getDay() + 1;
+    if (age > 0 && months < 0) age--;
+    if (age === 0) {
+        if (months === 0) {
+            return days + (days === 1 ? ' zi': 'zile');
+        }
+        else {
+            return months + (months === 1 ? ' lună' : ' luni');
+        }
+    }
+    return age + (age === 1 ? ' an' : ' ani');
+}
+
+function formatBirthDate(birthDate: string | null): string {
+    if (!birthDate) return "—";
+    const [d, m] = birthDate.split(".").map(Number);
+    const y = birthDate.split(".")[2];
+    const months = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"];
+    return `${d} ${months[m - 1]} ${y}`;
+}
+
+function genderLabel(g: string | null) {
+    if (!g) return "—";
+    if (g.toUpperCase() === "MALE") return { text: "Mascul", symbol: "♂", color: "#3b82f6", bg: "#eff6ff" };
+    if (g.toUpperCase() === "FEMALE") return { text: "Femelă", symbol: "♀", color: "#ec4899", bg: "#fdf2f8" };
+    return { text: "Necunoscut", symbol: "○", color: "#64748b", bg: "#f8fafc" };
+}
+
+function parseSlot(slot: string) {
+    if (!slot) return { date: "—", time: "—" };
+    const [datePart, timePart] = slot.split(" ");
+    const [day, month, year] = datePart.split(".");
+    const months = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"];
+    return { date: `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`, time: timePart ?? "" };
+}
+
+function AppStatusBadge({ app }) {
+    const past = moment(`${app.slot.split(" ")[0].split(".").reverse().join("-")} ${app.slot.split(" ")[1]}`).isSameOrBefore(moment());
+    if (app.status.includes("CANCELLED"))
+        return <span className="rounded-full bg-red-200 px-2.5 py-1 text-xs font-semibold text-red-500">Anulată</span>;
+    if (app.status.includes("BOOKED") && !past)
+        return <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Programată</span>;
+    if (app.done)
+        return <span className="rounded-full bg-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-600">Finalizată</span>;
+    return <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-500">Neefectuată</span>;
+}
+
 
 export default function IndividualPet() {
     const auth = useContext(AuthContext);
-    const [error, setError] = useState<string | null>(null);
-    const [pet, setPet] = useState<PetDTO | null>(null);
     const params = useParams();
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const navigate = useNavigate();
-    const [isActive, setIsActive] = useState(false);
-    const [types, setTypes] = useState(null);
-    const [breeds, setBreeds] = useState(null);
-    const [dob, setDob] = useState(null);
+
+    const [pet, setPet] = useState<PetDTO | null>(null);
     const [appointments, setAppointments] = useState([]);
     const [records, setRecords] = useState([]);
+    const [activeTab, setActiveTab] = useState<"appointments" | "records">("appointments");
+
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     const [showSuccess, setShowSuccess] = useState(false);
-    const [showError, setShowError] = useState(false);
-    const [successMesssage, setSuccessMessage] = useState("");
-    const [petType, setPetType] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [gender, setGender] = useState(null);
+    const [reloadCount, setReloadCount] = useState(0);
+
+    const [editing, setEditing] = useState(false);
     const [users, setUsers] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [newUser, setNewUser] = useState("");
 
-    async function fetchBreedsByType(typeId) {
-        try {
-            const res = await getBreedsByType(typeId);
-            setBreeds(res);
-            setError(null);
-        } catch (err) {
-            setError(err.message);
-            setShowError(true);
-            setBreeds([]);
-            console.error(err.message);
-        }
-    }
-
-    async function postData(formData) {
-        const name = formData.get("name");
-        const breedId = parseInt(formData.get("breed"));
-        const weight = parseFloat(formData.get("weight"));
-        const gender = formData.get("gender") as string;
-        const petDob = dob ? format(dob, 'dd.MM.yyyy') : null;
-        const petDobArr = petDob ? petDob.split('.').map(num => parseInt(num)) : null;
-        const date = petDobArr ? new Date(petDobArr[2], petDobArr[1] - 1, petDobArr[0]) : null;
-        if (date === null || isNaN(date.getTime())) {
-            setError("Data nașterii nu este validă. Asigurați-vă că ați selectat o dată. Dacă nu cunoașteți data exactă, alegeți una aproximativă.");
-            return;
-        }
-        if (date > new Date()) {
-            setError("Data nașterii nu poate fi în viitor.");
-            return;
-        }
-        if (pet) {
-            const savePet = async () => {
-                try {
-                    await editPet(auth.token, {id: pet.id, name: name, breed: {id: breedId}, birthDate: petDob, weight: weight, gender: gender.toUpperCase(), owner: {id: selectedUser ? selectedUser.id : pet.owner.id}});
-                    setShowSuccess(true);
-                    setSuccessMessage("Datele au fost salvate cu succes");
-                    setError(null);
-                    if (selectedUser && selectedUser.id !== pet.owner.id) {
-                        navigate(`/pets/${selectedUser.username}/${name}`);
-                    }
-                }
-                catch (err) {
-                    setError(err.message);
-                    setShowError(true);
-                    console.error(err.message);
-                }
-            }
-            savePet();
-        }
-    }
-
-    function handleSubmit(e) {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        postData(fd);
-        setIsActive(false);
-        navigate(`/pets/${params.username}/${fd.get("name")}`);
-    }
-
+    const canEdit = pet && (pet.owner?.id === auth.user?.id || isAdmin(auth.user?.roles));
 
     useEffect(() => {
         if (!isAdmin(auth.user.roles) && auth.user.username !== params.username && !isVeterinarian(auth.user.roles)) {
             navigate("/access-denied");
+            return;
         }
-        const fetchPet = async () => {
-            try {
-                const user = await findUserByUsername(auth.token, params.username);
-                console.log(user);
-                const pets = await findPetByOwnerAndName(auth.token, params.username, params.petName);
-                const pet = pets.filter(p => p.name === params.petName)[0];
-                setPet(pet);
-                setPetType(pet.breed.petType.id.toString());
-                setSelectedUser(pet.owner);
-                setError(null);
-                console.log(pet);
-                const fetchBD = async () => {
-                    if (pet && pet.birthDate) {
-                        setDob(new Date(parseInt(pet.birthDate.split('.')[2]), parseInt(pet.birthDate.split('.')[1]) - 1, parseInt(pet.birthDate.split('.')[0])));
-                    }
-                }
-                fetchBD();
-                const fetchTypes = async () => {
-                    try {
-                        const res = await getAllTypes();
-                        setTypes(res);
-                        setError(null);
-                        await fetchBreedsByType(pet.breed.petType.id);
 
-                    }
-                    catch (err) {
-                        setError(err.message);
-                        setShowError(true);
-                        console.error(err);
-                    }
-                }
-                fetchTypes();
-                const fetchAppointments = async () => {
-                    try {
-                        const res = await getAppointmentsByPet(auth.token, pet.id);
-                        setAppointments(res);
-                    } catch (err) {
-                        setError(err.message);
-                        setShowError(true);
-                        setAppointments([]);
-                    }
-                }
-                fetchAppointments();
-                const fetchRecords = async () => {
-                    try {
-                        const res = await getRecordsByPet(auth.token, pet.id);
-                        setRecords(res);
-                    } catch (err) {
-                        setError(err.message);
-                        setShowError(true);
-                        console.error(err.message);
-                        setRecords([]);
-                    }
-                }
-                fetchRecords();
+        const load = async () => {
+            if(sessionStorage.getItem("showSuccess")) {
+                setSuccessMessage(sessionStorage.getItem("showSuccess") as string);
+                setShowSuccess(true);
+                sessionStorage.removeItem("showSuccess");
+            }
+            try {
+                await findUserByUsername(auth.token, params.username);
+                const pets = await findPetByOwnerAndName(auth.token, params.username, params.petName);
+                const found = pets.find((p) => p.name === params.petName);
+                if (!found) { navigate("/404"); return; }
+                setPet(found);
+                setNewUser(found.owner?.username ?? "");
+                setGender(genderLabel(found.gender));
+                const [apps, recs] = await Promise.allSettled([
+                    getAppointmentsByPet(auth.token, found.id),
+                    getRecordsByPet(auth.token, found.id),
+                ]);
+                setAppointments(apps.status === "fulfilled" ? apps.value : []);
+                setRecords(recs.status === "fulfilled" ? recs.value : []);
             } catch (err) {
                 setError(err.message);
-                setShowError(true);
-                console.error(err.message);
             }
-        }
-        fetchPet();
-        if (isAdmin(auth.user.roles)) {
-            const fetchUsers = async() => {
-                const resUsers = await getAllUsers(auth.token, null, null);
-                setUsers(resUsers);
+            if (isAdmin(auth.user.roles)) {
+                try {
+                    const usersRes = await getAllUsers(auth.token, null, null)
+                    setUsers(usersRes);
+                } catch (err) {
+                    setError(err.message);
+                }
             }
-            fetchUsers();
-        }
-    }, [params.username, params.petName]);
+        };
+        load();
+    }, [params.username, params.petName, reloadCount]);
 
     async function handleDelete() {
         try {
-            await deletePet(auth.token, pet.id);
-            sessionStorage.setItem("deletedPetId", pet.id.toString());
-            navigate(`/pets/${auth.user.username}`);
-        }
-        catch (err) {
-            console.log(err);
+            await deletePet(auth.token, pet!.id);
+            sessionStorage.setItem("deletedPetId", pet!.id.toString());
+            navigate(`/pets/${params.username}`);
+        } catch (err) {
+            setError(err.message);
         }
     }
 
-    const closeDeleteConfirm = () => {
-        setShowDeleteConfirm(false);
-    }
-
-    async function filterUsers(keyword) {
+    async function loadUsers(usernameString: string) {
         try {
-            const resUsers = await getAllUsers(auth.token, keyword, null);
-            setUsers(resUsers);
+            const filteredUsers = await getAllUsers(auth.token, usernameString, null);
+            setUsers(filteredUsers);
         }
         catch (err) {
             setError(err.message);
-            setShowError(true);
-            console.error(err);
         }
     }
 
-    return <>
-        {error && <p className="text-danger">{error}</p>}
-        <Container className="align-items-start" style={{paddingTop: '2.5rem'}}>
-            <Row className="w-100 justify-content-center">
-                <Col xs={12} md={8} lg={6}>
-                    { error && <p className="text-danger text-center"><small>{error}</small></p> }
+    async function handleOwnerChange(newOwnerUsername: string) {
+        try {
+            const newOwner = await findUserByUsername(auth.token, newOwnerUsername);
+            if (!newOwner) {
+                setError("Utilizatorul nu a fost găsit.");
+                return;
+            }
+            const updatedPet = { ...pet, owner: newOwner };
+            const res = await editPet(auth.token, updatedPet);
+            setPet(res);
+            setEditing(false);
+            setSuccessMessage("Proprietarul a fost schimbat cu succes!");
+            setShowSuccess(true);
+            navigate(`/pets/${newOwner.username}/${res.name}`);
+        } catch (err) {
+            setError(err.message);
+        }
+    }
 
-                    { pet ? (
-                        <Card className="shadow-sm p-5">
-                            <Card.Body>
-                                <Form id="edit-pet-form" onSubmit={handleSubmit}>
-                                <div className="d-flex flex-column align-items-center">
-                                    <Form.Group controlId="pet-name">
-                                        {isActive && <Form.Label className="fw-bold mb-1 mx-2">Nume</Form.Label>}
-                                        <Form.Control defaultValue={pet.name} name="name" type="text" disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}/>
-                                    </Form.Group>
-                                    <small className="text-muted">Proprietar: {params.username}</small>
+    if (!pet) return (
+        <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Se încarcă...</div>
+    );
+
+    const age = calcAge(pet.birthDate ?? null);
+    const PREVIEW_COUNT = 5;
+
+    return (
+        <div className="space-y-5" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+
+            <div>
+                <div className="flex items-center gap-1.5 text-sm text-slate-400 mb-1">
+                    <button
+                        type="button"
+                        onClick={() => navigate(`/pets/${params.username}`)}
+                        className="hover:text-emerald-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
+                        style={{ fontSize: 14, color: "#94a3b8" }}
+                    >
+                        Animale
+                    </button>
+                    <span>/</span>
+                    <span style={{ color: "#475569" }}>{pet.name}</span>
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900 mt-3">Detalii animal de companie</h1>
+            </div>
+
+            {error && (
+                <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+            )}
+
+            <div className="rounded-2xl bg-white mt-3 mb-2"
+                style={{ border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", padding: "28px 32px" }}>
+                <div className="flex items-center gap-6 justify-content-between">
+
+                    <div className="flex items-center justify-center rounded-2xl flex-shrink-0 text-4xl"
+                        style={{ width: 100, height: 100, background: "#e1f5ee", border: "1.5px solid #a7f3d0" }}>
+                        🐾
+                    </div>
+
+                    <div className="flex-1 min-w-0 mx-3">
+                        <div className="row">
+                        <div className="col flex items-center">
+                            <div>
+                                <h2 className="m-0 font-bold text-slate-900" style={{ fontSize: 24 }}>{pet.name}</h2>
+                                <p className="m-0 mt-1" style={{ fontSize: 14, color: "#64748b" }}>
+                                    {pet.breed?.name ?? pet.breed?.petType?.name ?? "—"}
+                                </p>
+                            </div>
+                        </div>
+                            <div className="col">
+                                <div>
+                                    <p className="m-0 text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8", letterSpacing: "0.05em" }}>Proprietar</p>
+                                    {!editing ?
+                                    <p className="mt-1 text-sm font-medium text-slate-700">@{pet.owner?.username ?? params.username}</p>
+                                        :
+                                        <Autocomplete
+                                            className="w-48"
+                                            options={users.map(u => u.username)}
+                                            value={newUser || null}
+                                            onChange={(e, value) => {
+                                                console.log(e);
+                                                if (value) setNewUser(value);
+                                            }}
+                                            onInputChange={(e, value) => {
+                                                console.log(e);
+                                                setNewUser(value);
+                                                if (value.length > 0) loadUsers(value);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField {...params} placeholder="Cauta utilizator..." size="small" />
+                                            )}
+                                            noOptionsText="Niciun rezultat"
+                                        />
+                                    }
+
                                 </div>
+                                <div>
+                                    <p className="m-0 text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8", letterSpacing: "0.05em" }}>
+                                        Data nașterii
+                                    </p>
+                                    <p className="mt-1 text-sm font-medium text-slate-700">
+                                        {formatBirthDate(pet.birthDate)}
+                                        {age != null && <span className="text-slate-400 ml-1">({age})</span>}
+                                    </p>
+                                </div>
+                            </div>
+                         <div className="col">
+                              <div>
+                                        <p className="m-0 text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8", letterSpacing: "0.05em" }}>Gen</p>
+                                        <p className="mt-1 text-sm font-medium text-slate-700">{gender.text}</p>
+                                    </div>
+                                    <div>
+                                        <p className="m-0 text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8", letterSpacing: "0.05em" }}>Greutate</p>
+                                        <p className="mt-1 text-sm font-medium text-slate-700">{pet.weight !== null ? pet.weight + ' kg' : <em>Necompletat</em>}</p>
+                                    </div>
+                                </div>
+                        </div>
 
-                                <hr />
+                    </div>
 
-                                <Row className="gx-3 gy-2">
-                                    <Col xs={6} className="fw-bold d-flex align-items-center">Specie</Col>
-                                    <Col xs={6}>
-                                        <Form.Group controlId="pet-type">
-                                            <FormSelect
-                                                name="type" value={petType} onChange={(e) => {
-                                                const selectedTypeId = e.target.value;
-                                                e.persist();
-                                                setPetType(selectedTypeId);
-                                                if (selectedTypeId !== '') {
-                                                    fetchBreedsByType(selectedTypeId);
-                                                }
-                                            }} disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}>
-                                                <option value="" hidden={isActive}>Selectati o specie</option>
-                                                {types && types.length > 0 ? types.map(type => (
-                                                    <option key={type.id} value={type.id}>{type.name}</option>
-                                                )) : <option disabled>Nu s-au găsit tipuri</option>}
-                                            </FormSelect>
-                                        </Form.Group>
-                                        </Col>
-                                    <Col xs={6} className="fw-bold d-flex align-items-center" hidden={!isAdmin(auth.user.roles)}>
-                                        Proprietar
-                                    </Col>
-                                    <Col xs={6} hidden={!isAdmin(auth.user.roles)}>
-                                        <Form.Group style={{paddingLeft: '0.7rem'}} controlId="pet-owner">
-                                            <Dropdown>
-                                                <Dropdown.Toggle as="div">{selectedUser?.username}</Dropdown.Toggle>
-                                                <Dropdown.Menu>
-                                                        <Form.Control onChange={(e) => filterUsers(e.target.value)}></Form.Control>
-                                                    {
-                                                        users && users.length > 0 && users.map((user, index) =>
-                                                        <Dropdown.Item key={index} as="div" onClick={() => setSelectedUser(user)}>
-                                                            {user.username}
-                                                        </Dropdown.Item>)
-                                                    }
-                                                </Dropdown.Menu>
-                                            </Dropdown>
-                                        </Form.Group>
-                                        </Col>
-                                    <Col xs={6} className="fw-bold d-flex align-items-center">Rasă</Col>
-                                    <Col xs={6}>
-                                        <Form.Group controlId="pet-breed">
-                                            <FormSelect name="breed" defaultValue={pet.breed ? pet.breed.id : ''} disabled={!isActive}>
-                                                {breeds && breeds.length > 0 ? breeds.map(breed => (
-                                                    <option key={breed.id} value={breed.id}>{breed.name}</option>
-                                                )) : <option disabled>Nu s-au găsit rase</option>}
-                                            </FormSelect>
-                                        </Form.Group>
-                                    </Col>
+                    {canEdit && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex flex-col items-center">
+                                {!editing && <button
+                                    type="button"
+                                    onClick={() => {if (isAdmin(auth.user.roles)) setEditing(true); else setShowEditModal(true);}}
+                                    className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    ✎ Editare {isAdmin(auth.user.roles) ? "proprietar" : "date"}
+                                </button>
+                                }
+                                {!editing && isAdmin(auth.user.roles) && pet.owner.username === auth.user.username && <button
+                                    type="button"
+                                    onClick={() => {setShowEditModal(true);}}
+                                    className="flex items-center mt-3 gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    ✎ Editare date
+                                </button>
+                                }
+                                {editing && <button
+                                    type="button"
+                                    onClick={() => {handleOwnerChange(newUser);}}
+                                    className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    Salvare
+                                </button>
+                                }
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowDeleteConfirm(true); }}
+                                    className="text-center mt-3 px-4 py-2 text-sm rounded-xl transition-colors font-semibold bg-red-500 hover:bg-red-600 text-white"
+                                >
+                                    🗑 Ștergere
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                                    <Col xs={6} className="fw-bold d-flex align-items-center">Data nașterii</Col>
-                                    <Col xs={6}><Form.Group controlId="pet-dob">
-                                        <div>
-                                            <DatePicker disabled={!isActive} className="custom-picker"
-                                                format="dd.MM.yyyy"
-                                                value={dob}
-                                                onChange={setDob}
-                                                style={{width: '100%'}}
-                                                container={() => document.body}
-                                                oneTap={false}
-                                            />
-                                        </div>
-                                    </Form.Group>
-                                    </Col>
 
-                                    <Col xs={6} className="fw-bold d-flex align-items-center">Greutate</Col>
-                                    <Col xs={6}><Form.Group controlId="pet-weight">
-                                            <Form.Control disabled={!isActive} defaultValue={pet.weight} name="weight" type="number" step={0.01} className={!isActive ? 'disabled-styling' : ''}
-                                            />
-                                    </Form.Group>
-                                    </Col>
+            <div className="rounded-2xl bg-white"
+                style={{ border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
 
-                                    <Col xs={6} className="fw-bold d-flex align-items-center">Gen</Col>
-                                    <Col xs={6}>
-                                        <Form.Group controlId="pet-gender">
-                                            <FormSelect name="gender" defaultValue={pet ? pet?.gender.toLowerCase() : 'none'} aria-label="Gender" disabled={!isActive} className={!isActive ? 'disabled-styling' : ''}>
-                                                <option value="male">Mascul</option>
-                                                <option value="female">Femela</option>
-                                                <option value="none">Nu se mentioneaza</option>
-                                            </FormSelect>
-                                        </Form.Group>
-                                    </Col>
-                                </Row>
+                <div className="flex" style={{ borderBottom: "1px solid #f1f5f9", padding: "0 24px" }}>
+                    {([
+                        { key: "appointments", label: "Istoric programări" },
+                        { key: "records", label: "Istoric rapoarte" },
+                    ] as const).map(tab => (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => setActiveTab(tab.key)}
+                            className="cursor-pointer transition-colors"
+                            style={{
+                                border: "none", background: "transparent", padding: "14px 0",
+                                marginRight: 28, fontSize: 14, fontWeight: 600,
+                                color: activeTab === tab.key ? "#1d9e75" : "#94a3b8",
+                                borderBottom: activeTab === tab.key ? "2px solid #1d9e75" : "2px solid transparent",
+                            }}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
-                                <hr />
-                                </Form>
-                            </Card.Body>
+                {activeTab === "appointments" && (
+                    <div>
+                        {appointments.length === 0 ? (
+                            <div className="py-12 text-center text-sm text-slate-400">
+                                Nu există programări înregistrate
+                            </div>
+                        ) : (
+                            <>
+                                <table className="w-full">
+                                    <thead>
+                                        <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                            {["Data", "Clinică", "Veterinar", "Status"].map(h => (
+                                                <th key={h} className={`${h === 'Status' ? 'text-center' : 'text-left'} px-6 py-3`}
+                                                    style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {appointments.slice(0, PREVIEW_COUNT).map(app => {
+                                            const { date, time } = parseSlot(app.slot);
+                                            return (
+                                                <tr
+                                                    key={app.id}
+                                                    onClick={() => {
+                                                        if (auth.user.username === app.currentOwner?.username || auth.user.username === app.vet?.username) {
+                                                            sessionStorage.setItem("appointmentId", app.id.toString());
+                                                            navigate("/appointments/details");
+                                                        }
+                                                    }}
+                                                    className={`${(auth.user.username === app.currentOwner?.username || auth.user.username === app.vet?.username) ? 'cursor-pointer': ''} transition-colors`}
+                                                    style={{ borderBottom: "1px solid #f8fafc" }}
+                                                    onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                                >
+                                                    <td className="px-6 py-3.5">
+                                                        <span className="text-sm font-medium text-slate-700">{date}</span>
+                                                        {time && <span className="text-sm font-medium text-slate-700"> {time}</span>}
+                                                    </td>
+                                                    <td className="px-6 py-3.5 text-sm text-slate-600">{app.clinic?.name ?? <em>Clinică inactivă</em>}</td>
+                                                    <td className="px-6 py-3.5 text-sm text-slate-600">
+                                                        {app.vet ? `Dr. ${app.vet.firstName ?? ""} ${app.vet.lastName ?? ""}`.trim() : <em>Utilizator inactiv</em>}
+                                                    </td>
+                                                    <td className="px-3 py-3.5 text-center"><AppStatusBadge app={app} /></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
 
-                            <Card.Footer>
-                                {(pet.owner.id === auth.user.id || isAdmin(auth.user.roles)) && (
-                                    <div className="d-flex justify-content-between gap-2">
-                                        {!isActive && <Button variant="primary" onClick={() => setIsActive(true)}>Editare</Button>}
-                                        {isActive && (
-                                            <Button variant="primary" form="edit-pet-form" type="submit">Salvare</Button>
-                                        )}
-                                        {!isActive &&
-                                        <Button variant="danger" onClick={() => {
-                                            setShowDeleteConfirm(true);
-                                        }}>Stergere</Button>
-                                        }
+                                {appointments.length > PREVIEW_COUNT && (
+                                    <div className="px-6 py-4" style={{ borderTop: "1px solid #f1f5f9" }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                navigate("/appointments");
+                                                sessionStorage.setItem("petId", pet.id.toString());
+                                                sessionStorage.setItem("petName", pet.name.toString());
+                                            }}
+                                            className="text-sm font-medium cursor-pointer transition-colors"
+                                            style={{ background: "none", border: "none", color: "#1d9e75", padding: 0 }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = "#16856a"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = "#1d9e75"; }}
+                                        >
+                                            Vezi toate programările →
+                                        </button>
                                     </div>
                                 )}
-                            </Card.Footer>
-                        </Card>
-                    ) : (
-                        <p className="py-3 text-center">Se încarcă...</p>
-                    ) }
-                </Col>
-            </Row>
-            <Row className="w-100 justify-content-center mt-2">
-                <Col xs={12} md={8} lg={6}>
-                    <Tabs
-                        defaultActiveKey="appointments"
-                        className="mb-3"
-                        justify
-                    >
-                        <Tab eventKey="appointments" title="Istoric Programari">
-                            <Table>
-                                <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Clinica</th>
-                                    <th>Veterinar</th>
-                                    <th>Status</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {appointments && appointments.length > 0 ? appointments.map(app => (
-                                    <tr key={app.id} onClick={() => {
-                                        sessionStorage.setItem("appointmentId", app.id.toString());
-                                        navigate(`/appointments/details`);
-                                    }
-                                    } style={{cursor: 'pointer'}}>
-                                        <td>{app.slot}</td>
-                                        <td>{app.clinic?.name}</td>
-                                        <td>{app.vet?.firstName} {app.vet?.lastName}</td>
-                                        <td>{app.status.toLowerCase().includes("cancelled") ? 'Anulata' : 'Activa'}</td>
-                                    </tr>
-                                )) : <tr><td colSpan={4} className="text-center">Nu există programări</td></tr>}
-                                </tbody>
-                            </Table>
-                        </Tab>
-                        <Tab eventKey="history" title="Istoric Medical">
-                            <Table>
-                                <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Clinica</th>
-                                    <th>Veterinar</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {records && records.length > 0 ? records.map(record => (
-                                    <tr key={record.id} onClick={() => {
-                                        sessionStorage.setItem("recordId", record.id.toString());
-                                        navigate(`/records/details`);
-                                    }} style={{cursor: 'pointer'}}>
-                                        <td>{record.recordDate}</td>
-                                        <td>{record.appointment?.clinic?.name}</td>
-                                        <td>{record.vet?.firstName} {record.vet?.lastName}</td>
-                                    </tr>
-                                )) : <tr><td colSpan={3} className="text-center">Nu există rapoarte medicale</td></tr>}
-                                </tbody>
-                            </Table>
-                        </Tab>
-                    </Tabs>
-                </Col>
-            </Row>
-            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message={successMesssage}></SuccessToast>
-            <ErrorToast close={() => setShowError(false)} show={showError} messsage={error}></ErrorToast>
-        </Container>
-        <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti acest animal de companie?"/>
+                            </>
+                        )}
+                    </div>
+                )}
 
-    </>
- }
+                {activeTab === "records" && (
+                    <div>
+                        {records.length === 0 ? (
+                            <div className="py-12 text-center text-sm text-slate-400">
+                                Nu există rapoarte medicale înregistrate
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead>
+                                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                        {["Data", "Clinică", "Veterinar"].map(h => (
+                                            <th key={h} className="text-left px-6 py-3"
+                                                style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {records.map(rec => (
+                                        <tr
+                                            key={rec.id}
+                                            onClick={() => {
+                                                sessionStorage.setItem("recordId", rec.id.toString());
+                                                navigate("/records/details");
+                                            }}
+                                            className="cursor-pointer transition-colors"
+                                            style={{ borderBottom: "1px solid #f8fafc" }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                        >
+                                            <td className="px-6 py-3.5 text-sm font-medium text-slate-700">{rec.recordDate ?? "—"}</td>
+                                            <td className="px-6 py-3.5 text-sm text-slate-600">{rec.appointment?.clinic?.name ?? <em>Clinică inactivă</em>}</td>
+                                            <td className="px-6 py-3.5 text-sm text-slate-600">
+                                                {rec.vet ? `Dr. ${rec.vet.firstName ?? ""} ${rec.vet.lastName ?? ""}`.trim() : <em>Utilizator inactiv</em>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <AddPetForm
+                open={showEditModal}
+                pet={pet}
+                save={(updatedPet) => {
+                    setShowEditModal(false);
+                    if (updatedPet.name !== pet.name) {
+                        sessionStorage.setItem("showSuccess", "Datele au fost salvate cu succes!");
+                        navigate(`/pets/${params.username}/${updatedPet.name}`);
+                    }
+                    else {
+                        setReloadCount(p => p + 1);
+                        setSuccessMessage("Datele au fost salvate cu succes!");
+                        setShowSuccess(true);
+                    }
+                }}
+                close={() => setShowEditModal(false)}
+            />
+
+            <Confirm
+                open={showDeleteConfirm}
+                close={() => setShowDeleteConfirm(false)}
+                confirm={handleDelete}
+                message={`Doriți să ștergeți animalul "${pet.name}"?`}
+            />
+
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message={successMessage} />
+            <ErrorToast close={() => setError(null)} show={!!error} message={error} />
+        </div>
+    );
+}

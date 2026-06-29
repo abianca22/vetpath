@@ -1,310 +1,288 @@
-import {useContext, useEffect, useState} from "react";
-import {AuthContext} from "../api/authContext.ts";
-import {Button, Col, Container, Form, Row, Table} from "react-bootstrap";
-import {useNavigate, useSearchParams} from "react-router-dom";
-import {isAdmin, isVeterinarian} from "../api/roles.ts";
-import {filterPets, getAllBreeds, getAllTypes, getBreedsByType, getRecords, getRecordsByVet} from "../api/api.ts";
-import {FormControlLabel, Switch} from "@mui/material";
-import {DatePicker} from "rsuite";
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../api/authContext.ts";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { isAdmin, isVeterinarian } from "../api/roles.ts";
+import {
+    filterPets, getAllBreeds, getAllTypes, getBreedsByType,
+    getRecords, getRecordsByVet,
+} from "../api/api.ts";
+import { DatePicker } from "rsuite";
+import {
+    SlidersIcon, ChevronDownIcon,
+    CalendarSmallIcon, HeadphonesIcon, BuildingSmallIcon,
+} from "../components/Icons.tsx";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faBookMedical} from "@fortawesome/free-solid-svg-icons";
+import Pagination from "../components/Pagination.tsx";
 
+const PAGE_SIZE = 10;
 
 export default function RecordsList() {
     const auth = useContext(AuthContext);
-    const [records, setRecords] = useState([]);
     const navigate = useNavigate();
-    const [error, setError] = useState(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [records, setRecords] = useState([]);
+    const [listError, setListError] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
     const [lastOwnerString, setLastOwnerString] = useState("");
     const [lastNameString, setLastNameString] = useState("");
     const [lastType, setLastType] = useState("");
     const [lastBreed, setLastBreed] = useState("");
     const [types, setTypes] = useState([]);
     const [breeds, setBreeds] = useState([]);
-    const [checked, setChecked] = useState(false);
+    const [onlyGenerated, setOnlyGenerated] = useState(false);
     const [lastVetString, setLastVetString] = useState("");
+    const [page, setPage] = useState(1);
     const [start, setStart] = useState(null);
     const [end, setEnd] = useState(null);
-    const [searchParams, setSearchParams] = useSearchParams();
 
     async function fetchBreedsByType(typeId) {
-        try {
-            const res = await getBreedsByType(typeId);
-            setBreeds(res);
-            setError(null);
-        } catch (err) {
-            setError(err.message);
-            setBreeds([]);
-        }
+        try { setBreeds(await getBreedsByType(typeId)); }
+        catch (err) { setListError(err.message); setBreeds([]); }
     }
 
-    function handleCheckedChange() {
-        setChecked(!checked);
+    async function fetchRecords(
+        vet = null, owner = null, name = null,
+        typeId = null, breedId = null, generated = false,
+        startDate = null, endDate = null
+    ) {
+        try {
+            if (name || owner || typeId || breedId) {
+                const pets = await filterPets(auth.token, owner, name, typeId, breedId);
+                const all = [];
+                for (const pet of pets) {
+                    let res;
+                    if (isAdmin(auth.user.roles))
+                        res = await getRecords(auth.token, vet, null, pet.name, generated, startDate, endDate);
+                    else if (isVeterinarian(auth.user.roles))
+                        res = await getRecordsByVet(auth.token, auth.user.id, null, pet.name, generated, startDate, endDate);
+                    else
+                        res = await getRecords(auth.token, vet, auth.user.username, pet.name, generated, startDate, endDate);
+                    all.push(...res);
+                }
+                setRecords(all);
+            } else {
+                let res;
+                if (isAdmin(auth.user.roles))
+                    res = await getRecords(auth.token, vet, null, null, generated, startDate, endDate);
+                else if (isVeterinarian(auth.user.roles))
+                    res = await getRecordsByVet(auth.token, auth.user.id, null, null, generated, startDate, endDate);
+                else
+                    res = await getRecords(auth.token, vet, auth.user.username, null, generated, startDate, endDate);
+                setRecords(res);
+            }
+            setListError(null);
+            setPage(1);
+        } catch (err) { setListError(err.message); setRecords([]); }
     }
 
     async function handleSubmit(e) {
         e.preventDefault();
-        let startDate = null;
-        let endDate = null;
-        if (start !== null) {
-            const options = {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            } as const;
-            startDate = new Intl.DateTimeFormat('en-GB', options).format(start).replaceAll('/', '.').replace(', ', ' ');
-        }
-        if (end !== null) {
-            const options = {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            } as const;
-            endDate = new Intl.DateTimeFormat('en-GB', options).format(end).replaceAll('/', '.').replace(', ', ' ');
-        }
-        if (startDate !== null && endDate !== null) {
-            setSearchParams({startDate: startDate, endDate: endDate});
-        } else if (startDate !== null) {
-            setSearchParams({startDate: startDate});
-        } else if (endDate !== null) {
-            setSearchParams({endDate: endDate});
-        } else {
-            setSearchParams({});
-        }
-        const formData = new FormData(e.target);
-        let vet = formData.get("vet");
-        setLastVetString(vet.toString());
-        let owner = formData.get("owner");
-        setLastOwnerString(owner.toString());
-        let name = formData.get("name");
-        setLastNameString(name.toString());
-        let typeId = formData.get("type");
-        setLastType(typeId.toString());
-        let breedId = formData.get("breed");
-        setLastBreed(breedId.toString());
-
-        if (vet === '' || vet === undefined) {
-            vet = null;
-        }
-        if (owner === '' || owner === undefined) {
-            owner = null;
-        }
-        if (name === '' || name === undefined) {
-            name = null;
-        }
-        if (breedId === '' || breedId === undefined) {
-            breedId = null;
-        }
-        if (typeId === '' || typeId === undefined) {
-            typeId = null;
-        }
-
-        try {
-            const res = await filterPets(auth.token, owner, name, typeId, breedId);
-            const records = [];
-            for (let i = 0; i < res.length; i++) {
-                let localRes;
-                if (isAdmin(auth.user.roles)) {
-                    localRes = await getRecords(auth.token, vet, null, res[i].name, checked, startDate, endDate);
-                }
-                else if (isVeterinarian(auth.user.roles)) {
-                    localRes = await getRecordsByVet(auth.token, auth.user.id, null, res[i].name, checked, startDate, endDate);
-                }
-                else {
-                    localRes = await getRecords(auth.token, vet, auth.user.username, res[i].name, checked, startDate, endDate);
-                }
-                records.push(...localRes);
-            }
-            setRecords(records);
-        }
-        catch(err) {
-            setError(err.message);
-        }
+        const fmt = { year: "numeric", month: "2-digit", day: "2-digit" } as const;
+        const startDate = start
+            ? new Intl.DateTimeFormat("en-GB", fmt).format(start).replaceAll("/", ".").replace(", ", " ")
+            : null;
+        const endDate = end
+            ? new Intl.DateTimeFormat("en-GB", fmt).format(end).replaceAll("/", ".").replace(", ", " ")
+            : null;
+        setSearchParams(
+            startDate && endDate ? { startDate, endDate }
+                : startDate ? { startDate }
+                    : endDate ? { endDate } : {}
+        );
+        const fd = new FormData(e.target);
+        const vet = fd.get("vet")?.toString() || null;
+        const owner = fd.get("owner")?.toString() || null;
+        const name = fd.get("name")?.toString() || null;
+        const typeId = fd.get("type")?.toString() || null;
+        const breedId = fd.get("breed")?.toString() || null;
+        if (vet) setLastVetString(vet);
+        if (owner) setLastOwnerString(owner);
+        if (name) setLastNameString(name);
+        if (typeId) setLastType(typeId);
+        if (breedId) setLastBreed(breedId);
+        await fetchRecords(vet, owner, name, typeId, breedId, onlyGenerated, startDate, endDate);
     }
 
     useEffect(() => {
-        const loadSearchParams = () => {
-            if (searchParams.get("startDate") !== null) {
-                let date = [];
-                date.push(...searchParams.get("startDate").split('.'));
-                date = date.map(component => parseInt(component));
-                setStart(new Date(date[2], date[1], date[0]));
-            }
-            if (searchParams.get("endDate") !== null) {
-                let date = [];
-                date.push(...searchParams.get("endDate").split('.'));
-                date = date.map(component => parseInt(component));
-                setEnd(new Date(date[2], date[1], date[0]));
-            }
-        }
-        loadSearchParams();
-
-        const fetchTypes = async () => {
+        const fetchTypes = async () => { try { setTypes(await getAllTypes()); } catch (e) { console.error(e.message); } };
+        const fetchBreeds = async () => { try { setBreeds(await getAllBreeds()); } catch (e) { console.error(e.message); } };
+        fetchTypes();
+        fetchBreeds();
+        const loadRecords = async () => {
             try {
-                const res = await getAllTypes();
-                setTypes(res);
-                setError(null);
+                fetchRecords(null, null, null, null, null, false,
+                    searchParams.get("startDate"), searchParams.get("endDate"));
             }
             catch (err) {
-                setError(err.message);
+                console.error(err.message);
             }
         }
-        fetchTypes();
+        loadRecords();
 
-        const fetchBreeds = async () => {
-            try {
-                const res = await getAllBreeds();
-                setBreeds(res);
-                setError(null);
-            } catch (err) {
-                setError(err.message);
-            }
-        }
-        fetchBreeds();
-
-        const fetchRecords = async() => {
-            try {
-                if (isAdmin(auth.user.roles)) {
-                    const res = await getRecords(auth.token, null, null, null, false, searchParams.get("startDate"), searchParams.get("endDate"));
-                    setRecords(res);
-                }
-                else if (isVeterinarian(auth.user.roles)) {
-                    const res = await getRecordsByVet(auth.token, auth.user.id, null, null, false, searchParams.get("startDate"), searchParams.get("endDate"));
-                    setRecords(res);
-                }
-                else {
-                    const res = await getRecords(auth.token, null, auth.user.username, null, false, searchParams.get("startDate"), searchParams.get("endDate"));
-                    setRecords(res);
-                }
-                setError(null);
-            }
-            catch(err) {
-                setError(err.message);
-                setRecords([]);
-            }
-        }
-        fetchRecords();
     }, []);
 
+    function goToDetails(id: number) {
+        sessionStorage.setItem("recordId", String(id));
+        navigate("/records/details");
+    }
+
+
+    const activeFilterCount = [
+        lastVetString, lastOwnerString, lastNameString,
+        lastType, lastBreed, start, end, onlyGenerated,
+    ].filter(Boolean).length;
+
     return (
-        <Container className="d-flex flex-grow-1" fluid>
-            <Row className="align-items-start h-100 w-100 justify-content-center">
-                <Col className="col-9">
-                    <h1 className="m-5 text-center">Rapoarte medicale</h1>
-                    {error && error.split('\n').map((err, index) => <p key={index} className="text-danger mb-1"><small>{err}</small></p>)}
-                    <Form className="d-flex justify-content-start mb-5" onSubmit={handleSubmit}>
-                        <Form.Group className="m-2" hidden={isVeterinarian(auth.user.roles)}>
-                                <Form.Label>Veterinar</Form.Label>
-                                <br/>
-                                <Form.Control name="vet" type="text" value={lastVetString} onChange={(e) => setLastVetString(e.target.value)}></Form.Control>
-                        </Form.Group>
-                        <Form.Group className="m-2">
-                            <Form.Label>Utilizator</Form.Label>
-                            <br/>
-                            <Form.Control name="owner" type="text" value={lastOwnerString} onChange={(e) => setLastOwnerString(e.target.value)}></Form.Control>
-                        </Form.Group>
-                        <Form.Group className="m-2">
-                            <Form.Label>Animal</Form.Label>
-                            <br/>
-                            <Form.Control name="name" type="text" value={lastNameString} onChange={(e) => setLastNameString(e.target.value)}></Form.Control>
-                        </Form.Group>
-                        <Form.Group className="m-2">
-                            <Form.Label>Specie</Form.Label>
-                            <br/>
-                            <Form.Select name="type" value={lastType} onChange={(e) => {
-                                const selectedTypeId = e.target.value;
-                                e.persist();
-                                setLastType(selectedTypeId);
-                                fetchBreedsByType(selectedTypeId);
-                            }}>
-                                <option value="" hidden={true}></option>
-                                {
-                                    types && types.length > 0 ? (types.map(type =>
-                                            <option key={type.id} value={type.id}>{type.name}</option>
-                                        )) :
-                                        <option disabled>Niciun rezultat</option>
-                                }
-                            </Form.Select>
-                        </Form.Group>
-                        <Form.Group className="m-2">
-                            <Form.Label>Rasa</Form.Label>
-                            <br/>
-                            <Form.Select name="breed" value={lastBreed} onChange={(e) => setLastBreed(e.target.value)}>
-                                <option value="" hidden={true}></option>
-                                {breeds && breeds.length > 0 ?
-                                    breeds.map(breed => <option key={breed.id} value={breed.id}>{breed.name}</option>) :
-                                    <option disabled>Niciun rezultat</option>
-                                }
-                            </Form.Select>
-                        </Form.Group>
-                        <Form.Group controlId="slot-start" className="m-2 d-flex align-items-end">
-                            <DatePicker
-                                    format="dd.MM.yyyy"
-                                    value={start}
-                                    onChange={setStart}
-                                    style={{width: '100%'}}
-                                    container={() => document.body}
-                                    oneTap={false}
-                            />
-                        </Form.Group>
-                        <Form.Group controlId="slot-end" className="m-2 d-flex align-items-end">
-                            <DatePicker
-                                    format="dd.MM.yyyy"
-                                    value={end}
-                                    onChange={setEnd}
-                                    style={{width: '100%'}}
-                                    container={() => document.body}
-                                    oneTap={false}
-                            />
-                        </Form.Group>
-                        <Form.Group className="m-2 d-flex align-items-end">
-                            <FormControlLabel control={<Switch checked={checked} onChange={handleCheckedChange}/>} label={checked ? "Generate" : "Toate"}></FormControlLabel>
-                        </Form.Group>
-                        <Form.Group className="m-2 d-flex align-items-end">
-                            <Button type="submit" variant="primary" className="mx-2">Cautare</Button>
-                            <Button type="button" variant="secondary" onClick={() => {
-                                setLastNameString("");
-                                setLastOwnerString("");
-                                setLastBreed("");
-                                setLastType("");
-                                setStart(null);
-                                setEnd(null);
-                                setSearchParams({});
-                                setChecked(false);
-                            }}>Resetare</Button>
-                            <Button type="button" variant="success" className="mx-2" href={`/pets/${auth.user.username}`}>Animalele mele</Button>
-                        </Form.Group>
-                    </Form>
-                    <div className="table-responsive text-center">
-                        <Table className="mt-5">
-                            <thead>
-                            <tr>
-                                <th>Data raport</th>
-                                <th>Data programare</th>
-                                <th>Animal companie</th>
-                                <th>Veterinar</th>
-                                <th>Actiuni</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {
-                                records && records.length > 0 ? records.map(record => (
-                                    <tr key={record.id}>
-                                        <td>{record.recordDate}</td>
-                                        <td>{record.appointment?.slot}</td>
-                                        <td>{record.pet?.name} (Detinator: {record.pet?.owner.username})</td>
-                                        <td>{record.vet?.username} (Clinica: {record.appointment?.clinic?.name})</td>
-                                        <td>
-                                            <Button variant="success" onClick={() => {sessionStorage.setItem("recordId", record.id.toString()); navigate('/records/details');}}>Detalii</Button>
-                                        </td>
-                                    </tr>
-                                )) : <tr>
-                                    <td colSpan={6}>Nu exista rezultate</td>
-                                </tr>
-                            }
-                            </tbody>
-                        </Table>
+        <div className="space-y-4" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Rapoarte medicale</h1>
+                </div>
+            </div>
+
+            {listError && (
+                <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{listError}</div>
+            )}
+
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <button type="button" onClick={() => setShowFilters(v => !v)}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 cursor-pointer">
+                        <SlidersIcon />
+                        Filtrează
+                        {activeFilterCount > 0 && (
+                            <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                        <ChevronDownIcon className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
+                    </button>
+                </div>
+
+                {showFilters && (
+                    <form onSubmit={handleSubmit} className="mt-4 border-t border-slate-100 pt-4">
+                        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                            {!isVeterinarian(auth.user.roles) && (
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-xs font-medium text-slate-500">Veterinar</label>
+                                    <input name="vet" value={lastVetString} onChange={e => setLastVetString(e.target.value)}
+                                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                                        placeholder="Username vet" />
+                                </div>
+                            )}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">Proprietar</label>
+                                <input name="owner" value={lastOwnerString} onChange={e => setLastOwnerString(e.target.value)}
+                                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                                    placeholder="Username proprietar" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">Animal</label>
+                                <input name="name" value={lastNameString} onChange={e => setLastNameString(e.target.value)}
+                                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                                    placeholder="Numele animalului" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">Specie</label>
+                                <select name="type" value={lastType}
+                                    onChange={e => { setLastType(e.target.value); fetchBreedsByType(e.target.value); }}
+                                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                                    <option value="">Toate</option>
+                                    {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">Rasă</label>
+                                <select name="breed" value={lastBreed} onChange={e => setLastBreed(e.target.value)}
+                                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                                    <option value="">Toate</option>
+                                    {breeds.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">De la</label>
+                                <DatePicker format="dd.MM.yyyy" value={start} placeholder="Început" onChange={setStart} style={{ width: "100%" }} />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-medium text-slate-500">Până la</label>
+                                <DatePicker format="dd.MM.yyyy" value={end} placeholder="Final" onChange={setEnd} style={{ width: "100%" }} />
+                            </div>
+                            <label className="flex flex-col items-start gap-2 cursor-pointer">
+                                <span className="text-xs text-slate-500">{onlyGenerated ? "Generate AI" : "Toate"}</span>
+                                <div
+                                    onClick={() => setOnlyGenerated(v => !v)}
+                                    className={`relative h-5 w-9 rounded-full transition-colors ${onlyGenerated ? "bg-emerald-500" : "bg-slate-200"}`}
+                                >
+                                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${onlyGenerated ? "translate-x-4" : "translate-x-0.5"}`} />
+                                </div>
+                            </label>
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                            <button type="submit"
+                                className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition cursor-pointer">
+                                Aplică filtre
+                            </button>
+                            <button type="button" onClick={() => {
+                                setLastVetString(""); setLastOwnerString(""); setLastNameString("");
+                                setLastType(""); setLastBreed(""); setStart(null); setEnd(null);
+                                setOnlyGenerated(false); setSearchParams({});
+                                fetchRecords();
+                            }} className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition cursor-pointer">
+                                Resetare
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
+                {records.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                        <span className="text-4xl">📋</span>
+                        <p className="mt-3 text-sm">Nu există rapoarte medicale</p>
                     </div>
-                </Col>
-            </Row>
-        </Container>
+                ) : records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => (
+                    <div
+                        key={r.id}
+                        onClick={() => goToDetails(r.id)}
+                        className="flex items-center gap-4 px-5 py-4 cursor-pointer transition hover:bg-slate-50"
+                    >
+                        <FontAwesomeIcon icon={faBookMedical} className="text-emerald-600" size="2x" />
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <p className="m-0 font-semibold text-slate-800 text-sm">{r.pet?.name ?? <em>Animal șters</em>}</p>
+                                <p className="m-0 text-xs text-slate-400">· {r.pet?.owner?.username ?? <em>Utilizator dezactivat</em>}</p>
+                            </div>
+                            <div className="flex items-center gap-5 mt-2 flex-wrap">
+                                <div className="col-3">
+                                <span className="flex items-center gap-1 text-xs text-slate-400">
+                                    <CalendarSmallIcon size={11} />
+                                    {r.recordDate ?? "—"}
+                                </span>
+                                </div>
+                                <div className="col-3">
+                                <span className="flex items-center gap-1 text-xs text-slate-400">
+                                    <HeadphonesIcon size={11} />
+                                    {r.vet?.username ?? <em>Utilizator dezactivat</em>}
+                                </span>
+                                    </div>
+                                <div className="col-3">
+                                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                                        <BuildingSmallIcon size={11} />
+                                        {r.appointment?.clinic?.name ?? <em>Clinică dezactivată</em>}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <span style={{ color: "#94a3b8", fontSize: 18 }}>›</span>
+                    </div>
+                ))}
+                <div className="px-5">
+                    <Pagination total={records.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+                </div>
+            </div>
+        </div>
     );
 }

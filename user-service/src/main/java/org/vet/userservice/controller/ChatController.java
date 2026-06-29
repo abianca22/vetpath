@@ -106,8 +106,9 @@ public class ChatController {
         System.out.println(history);
         String systemPrompt = "You are a vet assistant. Give a short, clear answer, with words easily understood by basic pet owners. Try to answer by suggesting possible, common causes. Mention if they should contact a vet as soon as possible or if it can wait a few days, while observing. Ask for more details if needed. Mention that the pet owners should not trust your diagnoses entirely. Make the answer as short as possible, so it could be recorded in a report file if a vet decides so. Restrain from giving any advice that could be considered harmful. If the question is not related to veterinary medicine, politely decline to answer and suggest asking a relevant question.";
         String userPrompt = "The question: \"" + userMessage + "\"\n" + history;
-
+        System.out.println("Mesajul utilizatorului: " + userMessage);
         String result = chatClient.prompt().system(systemPrompt).user(userPrompt).call().content();
+        System.out.println("Raspunsul Gemini: " + result);
         ChatEntry chatEntry = ChatEntry.builder()
                 .userMessage(userMessage)
                 .botResponse(result)
@@ -132,15 +133,8 @@ public class ChatController {
     public ResponseEntity<?> getChatHistory(@PathVariable Integer petId, @AuthenticationPrincipal Jwt jwt) {
         UserDTO currentUser = usefulFunctions.decodeJWT(jwt);
         Pet pet = petService.getPetById(petId);
-        if (!currentUser.getId().equals(pet.getOwner().getId()) && !usefulFunctions.isAdmin(currentUser)) {
-            if (usefulFunctions.isVet(currentUser)) {
-                List<MedicalRecord> medicalRecords = medicalRecordService.findAllByVetAndPet(userService.getUserById(currentUser.getId()), pet);
-                if (medicalRecords.isEmpty()) {
-                    throw new AccessDeniedException("Doar veterinarii care au consultat acest animal de companie pot vedea istoricul intrebarilor");
-                }
-            } else {
-                throw new AccessDeniedException("Doar proprietarii, administratorii si veterinarii care au consultat acest animal de companie pot vedea istoricul intrebarilor");
-            }
+        if (!currentUser.getId().equals(pet.getOwner().getId()) && !usefulFunctions.isAdmin(currentUser) && !usefulFunctions.isVet(currentUser)) {
+            throw new AccessDeniedException("Doar proprietarii, administratorii si veterinarii pot vedea istoricul intrebarilor");
         }
         return ResponseEntity.ok().body(chatEntryService.getChatEntriesByPet(pet).stream().map(chatEntryMapper::toChatEntryDTO).toList());
     }
@@ -194,15 +188,8 @@ public class ChatController {
         if (chatEntry == null) {
             throw new NoDataFoundException("Nu s-a gasit nicio intrare in chat cu id-ul: " + id);
         }
-        if (!currentUser.getId().equals(chatEntry.getPet().getOwner().getId()) && !usefulFunctions.isAdmin(currentUser)) {
-            if (usefulFunctions.isVet(currentUser)) {
-                List<MedicalRecord> medicalRecords = medicalRecordService.findAllByVetAndPet(userService.getUserById(currentUser.getId()), chatEntry.getPet());
-                if (medicalRecords.isEmpty()) {
-                    throw new AccessDeniedException("Doar veterinarii care au consultat acest animal de companie pot vedea aceasta intrare in chat");
-                }
-            } else {
-                throw new AccessDeniedException("Doar proprietarii, administratorii si veterinarii care au consultat acest animal de companie pot vedea aceasta intrare in chat");
-            }
+        if (!currentUser.getId().equals(chatEntry.getPet().getOwner().getId()) && !usefulFunctions.isAdmin(currentUser) && !usefulFunctions.isVet(currentUser)) {
+                throw new AccessDeniedException("Doar proprietarii, administratorii si veterinarii pot vedea aceasta intrare in chat");
         }
         return ResponseEntity.ok().body(chatEntryMapper.toChatEntryDTO(chatEntry));
     }
@@ -228,16 +215,8 @@ public class ChatController {
         UserDTO currentUserDTO = usefulFunctions.decodeJWT(jwt);
         User owner = userService.getUserByUsername(username);
         List<ChatEntry> chatEntries = chatEntryService.findAllByOwner(owner);
-        if (!usefulFunctions.isAdmin(currentUserDTO) && !currentUserDTO.getId().equals(owner.getId())) {
-            if (usefulFunctions.isVet(currentUserDTO)) {
-                List<Appointment> appointmentsHistory = appointmentService.getAppointments(null, userService.getUserById(currentUserDTO.getId()), null, null, true, null, owner, null);
-                if (appointmentsHistory.isEmpty()) {
-                    throw new AccessDeniedException("Nu ati evaluat niciodata niciun animal de companie al acestui utilizator, asadar nu aveti dreptul de a vizualiza istoricul");
-                }
-            }
-            else {
-                throw new AccessDeniedException("Doar proprietarii, administratorii si medicii care au mai evaluat in trecut cel putin unul dintre animalele acestui utilizator au drept de vizualizare a istoricului");
-            }
+        if (!usefulFunctions.isAdmin(currentUserDTO) && !usefulFunctions.isVet(currentUserDTO) && !currentUserDTO.getId().equals(owner.getId())) {
+            throw new AccessDeniedException("Doar proprietarii, administratorii si medicii au drept de vizualizare a istoricului");
         }
         if (pet.isPresent()) {
             chatEntries = chatEntries.stream().filter(chatEntry -> chatEntry.getPet() != null && chatEntry.getPet().getId().equals(pet.get())).collect(Collectors.toList());

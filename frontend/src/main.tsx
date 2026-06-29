@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import './output.css';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'rsuite/dist/rsuite.css';
 import './custom.css';

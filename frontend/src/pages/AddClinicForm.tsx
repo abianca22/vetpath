@@ -1,77 +1,57 @@
-import {useContext, useEffect, useState} from "react";
-import {Button, Form, Modal, Row, Col} from "react-bootstrap";
-import {addClinic} from "../api/api.ts";
-import {AuthContext} from "../api/authContext.ts";
+import { useContext, useState } from "react";
+import { addClinic } from "../api/api.ts";
+import { AuthContext } from "../api/authContext.ts";
+import ModalShell, { ErrorMsg, Field, PrimaryBtn, SecondaryBtn, VetInput } from "../components/ModalShell.tsx";
 
 export default function AddClinicForm(props) {
     const auth = useContext(AuthContext);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-    }, []);
-
-
-    async function postData(formData) {
-        const name = formData.get("name");
-        const address = formData.get("address");
-        const phone = formData.get("phone");
-        const saveClinic = async () => {
-            try {
-                await addClinic(auth.token, {name: name, address: address, phoneNumber: phone});
-                    setError(null);
-                    props.save();
-                    props.showToast();
-                } catch (err) {
-                    setError(err.message);
-                }
-            }
-            saveClinic();
-    }
-
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
-        const fd = new FormData(e.target);
-        postData(fd);
+        const fd = new FormData(e.currentTarget);
+        try {
+            await addClinic(auth.token, {
+                name: fd.get("name") as string,
+                address: fd.get("address") as string,
+                phoneNumber: fd.get("phone") as string,
+            });
+            setError(null);
+            props.save();
+            props.showToast?.();
+        } catch (err) {
+            setError(err.message);
+        }
     }
 
-    return <>
-        <Modal show={props.open} onHide={() => {props.close(); setError(null)}} centered>
-            <Modal.Header closeButton className="border-bottom pb-3">
-                <Modal.Title className="fw-semibold">Adaugă o clinică</Modal.Title>
-            </Modal.Header>
-            <Modal.Body className="px-4 py-3">
-                {error && error.split('\n').map(err => <p key={err.split(' ')[0]} className="text-danger mb-1"><small>{err}</small>
-                </p>)}
-                <Form id="add-clinic-form" onSubmit={handleSubmit}>
-                    <Row className="g-3">
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="clinic-name">
-                                <Form.Label className="fw-medium mb-1">Denumire</Form.Label>
-                                <Form.Control name="name" type="text" required/>
-                            </Form.Group>
-                        </Col>
+    const close = () => { props.close(); setError(null); };
 
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="clinic-address">
-                                <Form.Label className="fw-medium mb-1">Adresa</Form.Label>
-                                <Form.Control name="address" type="text" required/>
-                            </Form.Group>
-                        </Col>
-                    </Row>
-                    <Row className="g-3 mt-2 justify-content-center">
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="clinic-phone">
-                                <Form.Label className="fw-medium mb-1">Telefon</Form.Label>
-                                <Form.Control name="phone" type="text" required/>
-                            </Form.Group>
-                        </Col>
-                    </Row>
-                </Form>
-            </Modal.Body>
-            <Modal.Footer className="border-top pt-3">
-                <Button variant="secondary" onClick={() => {props.close(); setError(null)}}>Închide</Button>
-                <Button type="submit" variant="primary" form="add-clinic-form">Salvare</Button>
-            </Modal.Footer>
-        </Modal>
-    </>
+    return (
+        <ModalShell
+            open={props.open}
+            onClose={close}
+            title="Adaugă o clinică"
+            footer={<>
+                <SecondaryBtn onClick={close}>Închide</SecondaryBtn>
+                <PrimaryBtn type="submit" form="add-clinic-form">Salvare</PrimaryBtn>
+            </>}
+        >
+            <form id="add-clinic-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <ErrorMsg error={error} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <Field label="Denumire" htmlFor="clinic-name">
+                        <VetInput id="clinic-name" name="name" type="text" placeholder="ex: VetCare Clinic" required />
+                    </Field>
+                    <Field label="Adresă" htmlFor="clinic-address">
+                        <VetInput id="clinic-address" name="address" type="text" placeholder="ex: Str. Florilor 12" required />
+                    </Field>
+                </div>
+                <div style={{ maxWidth: "50%", paddingRight: 8 }}>
+                    <Field label="Telefon" htmlFor="clinic-phone">
+                        <VetInput id="clinic-phone" name="phone" type="text" placeholder="ex: 0712345678" required />
+                    </Field>
+                </div>
+            </form>
+        </ModalShell>
+    );
 }

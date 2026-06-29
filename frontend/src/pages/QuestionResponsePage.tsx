@@ -1,10 +1,9 @@
-import {Button, Card, Col, Container, Row} from "react-bootstrap";
-import {AuthContext} from "../api/authContext.ts";
-import {useContext, useEffect, useState} from "react";
-import {approveResponse, deleteQuestion, fetchQuestion, getRecordsByPet} from "../api/api.ts";
-import {useNavigate, useParams} from "react-router-dom";
+import { AuthContext } from "../api/authContext.ts";
+import { useContext, useEffect, useState } from "react";
+import { approveResponse, deleteQuestion, fetchQuestion, getRecordsByPet } from "../api/api.ts";
+import { useNavigate, useParams } from "react-router-dom";
 import Confirm from "../components/Confirm.tsx";
-import {isAdmin, isVeterinarian} from "../api/roles.ts";
+import { isAdmin, isVeterinarian } from "../api/roles.ts";
 import FormatText from "../FormatText.tsx";
 
 export default function QuestionResponse() {
@@ -18,52 +17,30 @@ export default function QuestionResponse() {
     const [generated, setGenerated] = useState(false);
     const [showCreateConfirm, setShowCreateConfirm] = useState(false);
 
-    function closeCreateConfirm() {
-        setShowCreateConfirm(false);
-    }
-
-    function closeDeleteConfirm() {
-        setShowDeleteConfirm(false);
-    }
-
     async function generateRecord() {
         try {
             await approveResponse(auth.token, entry.id);
             setGenerated(true);
-        }
-        catch (err) {
-            setError(err.message);
-            console.error(err.message);
-        }
+        } catch (err) { setError(err.message); }
     }
 
     useEffect(() => {
-        const fetchEntry = async() => {
+        const fetchEntry = async () => {
             try {
                 const res = await fetchQuestion(auth.token, sessionStorage.getItem("questionId"));
                 setEntry(res);
-                console.log(res.timestamp);
                 setError(null);
                 if (res.pet) {
                     try {
-                        const records = await getRecordsByPet(auth.token, res.pet.id);
-                        const filteredRecords = records.filter(record => record.vet.id === auth.user.id);
-                        setRecords(filteredRecords);
-                        console.log(filteredRecords);
-                        console.log(res);
-                    }
-                    catch(err) {
-                        setError(err.message);
-                        console.error(err.message);
-                        setRecords([]);
-                    }
+                        const allRecords = await getRecordsByPet(auth.token, res.pet.id);
+                        setRecords(allRecords.filter(r => r.vet.id === auth.user.id));
+                    } catch (err) { console.log(err.message); setRecords([]); }
                 }
-            }
-            catch(err) {
+            } catch (err) {
                 setError(err);
                 navigate("/access-denied");
             }
-        }
+        };
         fetchEntry();
     }, [generated]);
 
@@ -72,98 +49,99 @@ export default function QuestionResponse() {
             await deleteQuestion(auth.token, sessionStorage.getItem("questionId"));
             sessionStorage.removeItem("questionId");
             navigate(`/ask/history/${params.username}`);
-        }
-        catch(err) {
-            setError(err);
-        }
+        } catch (err) { setError(err); }
     }
 
-    return <>
-        {error && <p className="text-danger">{error}</p>}
-        <Container className="d-flex justify-content-center align-items-start" style={{paddingTop: '2.5rem'}}>
-            <Row className="w-100 justify-content-center">
-                <Col className="col-8">
-                    { error && <p className="text-danger text-center"><small>{error}</small></p> }
+    const canGenerateRecord = isVeterinarian(auth.user.roles) && records?.length > 0 && entry?.medicalRecord === null && entry?.approvedBy === null;
+    const canViewRecord = (isVeterinarian(auth.user.roles) || auth.user.id === entry?.pet?.owner?.id) && entry?.medicalRecord !== null;
+    const canDelete = isAdmin(auth.user.roles) || auth.user.username === params.username;
 
-                    { entry ? (
-                        <Card className="shadow-sm p-5">
-                            <Card.Body>
-                                    <div className="d-flex flex-column align-items-center">
-                                        <h5>Intrebare</h5>
-                                    </div>
-                                    <hr />
-                                    <Row className="mt-3">
-                                        <Col xs={3} className="fw-bold">Data inregistrarii:</Col>
-                                        <Col></Col>
-                                        <Col xs={3}>
-                                            <div>
-                                                {entry.timestamp}
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                    <Row className="mt-3">
-                                        <Col xs={3} className="fw-bold">Animal de companie:</Col>
-                                        <Col></Col>
-                                        <Col xs={3}>
-                                            <div>
-                                            {entry.pet?.name} (Proprietar: {entry.pet?.owner?.username})
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                    <Row className="mt-3">
-                                        <Col xs={3} className="fw-bold">Subiect:</Col>
-                                        <Col></Col>
-                                        <Col xs={3}>
-                                            <div>
-                                            {entry.userMessage}
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                    <Row className="mt-3">
-                                        <label className="fw-bold mb-3">Raspuns:</label>
-                                            <div>
-                                                <FormatText message={entry?.botResponse}></FormatText>
-                                            </div>
-                                    </Row>
-                                <hr />
-                            </Card.Body>
-                            <Card.Footer>
+    return (
+        <div className="space-y-4">
+            <div>
+                <button onClick={() => navigate(`/ask/history/${params.username}`)}
+                    className="mb-4 flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition">
+                    ← Înapoi la istoric
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 text-center">Detalii întrebare</h1>
+            </div>
 
-                                    <Row>
-                                        <Col>
-                                            {
-                                                isVeterinarian(auth.user.roles) && records && records.length > 0 && entry.medicalRecord === null && entry.approvedBy === null &&
-                                                <Button onClick={() => setShowCreateConfirm(true)}>Generare raport</Button>
-                                            }
-                                            {
-                                                (isVeterinarian(auth.user.roles) || (auth.user.id === entry.pet.owner.id)) && entry.medicalRecord !== null &&
-                                                <Button onClick={() => {
-                                                    sessionStorage.setItem("recordId", entry.medicalRecord.id.toString());
-                                                    navigate('/records/details');
-                                                }}>Vizualizare raport</Button>
-                                            }
-                                        </Col>
-                                        <Col className="d-flex justify-content-end">
-                                            {
-                                                (isAdmin(auth.user.roles) || auth.user.username === params.username) &&
-                                        <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>Stergere</Button>
-                                            }
-                                        </Col>
-                                    </Row>
+            {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{String(error)}</div>}
 
-                            </Card.Footer>
-                        </Card>
-                    ) : (
-                        <p className="py-3 text-center">Se încarcă...</p>
-                    ) }
-                </Col>
-            </Row>
-            {/*<MedicalRecordForm open={showModal} save={() => {*/}
-            {/*    setShowModal(false);*/}
-            {/*}} close={() => setShowModal(false)} appointment={record?.appointment}/>*/}
-            <Confirm open={showDeleteConfirm} close={closeDeleteConfirm} confirm={handleDelete} message="Doriti sa stergeti aceasta intrebare din istoric? Va atentionam ca aceasta actiune este iremediabila."/>
-            <Confirm open={showCreateConfirm} close={closeCreateConfirm} confirm={generateRecord} message="Doriti sa generati un raport in baza acestui raspuns?"/>
-        </Container>
-    </>
+            {!entry ? (
+                <div className="flex items-center justify-center py-16">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+                </div>
+            ) : (
+                <div className="mx-auto max-w-3xl space-y-2">
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
+                        <div className="flex items-center gap-4 px-6 py-4">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-xl border border-emerald-100">✨</div>
+                            <div>
+                                <p className="font-semibold text-slate-800">Conversație AI</p>
+                                <p className="text-xs text-slate-400">{entry.timestamp}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between px-6 py-3">
+                            <span className="text-sm font-medium text-slate-500">Animal de companie</span>
+                            <span className="text-sm text-slate-700">
+                                {entry.pet?.name}
+                                {entry.pet?.owner?.username && (
+                                    <span className="ml-1 text-slate-400">(proprietar: {entry.pet.owner.username})</span>
+                                )}
+                            </span>
+                        </div>
+                        {entry.medicalRecord && (
+                            <div className="flex items-center justify-between px-6 py-3">
+                                <span className="text-sm font-medium text-slate-500">Raport generat</span>
+                                <span className="rounded-full bg-emerald-50 px-3 py-0.5 text-xs font-medium text-emerald-700">✓ Da</span>
+                            </div>
+                        )}
+                    </div>
 
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Întrebare</p>
+                        <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-slate-700 leading-relaxed">
+                            {entry.userMessage}
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Răspuns AI</p>
+                        <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 leading-relaxed">
+                            <FormatText message={entry.botResponse} />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <div className="flex gap-2">
+                            {canGenerateRecord && (
+                                <button onClick={() => setShowCreateConfirm(true)}
+                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                                    Generare raport
+                                </button>
+                            )}
+                            {canViewRecord && (
+                                <button onClick={() => { sessionStorage.setItem("recordId", entry.medicalRecord.id.toString()); navigate("/records/details"); }}
+                                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition">
+                                    Vizualizare raport
+                                </button>
+                            )}
+                        </div>
+                        {canDelete && (
+                            <button onClick={() => setShowDeleteConfirm(true)}
+                                className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition">
+                                Ștergere
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <Confirm open={showDeleteConfirm} close={() => setShowDeleteConfirm(false)} confirm={handleDelete}
+                message="Doriți să ștergeți această întrebare din istoric? Acțiunea este ireversibilă." />
+            <Confirm open={showCreateConfirm} close={() => setShowCreateConfirm(false)} confirm={generateRecord}
+                message="Doriți să generați un raport medical în baza acestui răspuns?" />
+        </div>
+    );
 }

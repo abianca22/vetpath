@@ -82,7 +82,7 @@ public class NotificationService {
     public Notification createNotificationForUpdatedAppointment(Appointment appointment) {
         Notification notification = Notification.builder()
                 .appointment(appointment)
-                .receiver(appointment.getPet().getOwner())
+                .receiver(appointment.getVet())
                 .title("Programare actualizata")
                 .content("Programarea din data de " + appointment.getSlot().format(usefulFunctions.dateTimeFormatter()) + " a fost modificata.")
                 .date(LocalDateTime.now())

@@ -254,6 +254,18 @@ public class PetController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/types/{petTypeId}")
+    public ResponseEntity<?> updatePetType(@PathVariable Integer petTypeId, @RequestBody @Valid PetTypeDTO petTypeDTO) {
+        var petType = petTypeService.getPetTypeById(petTypeId);
+        if (petType == null) {
+            throw new NoDataFoundException("Nu a fost gasit niciun tip de animal cu id-ul " + petTypeId);
+        }
+        petType.setName(petTypeDTO.getName());
+        PetType updatedPetType = petTypeService.savePetType(petType);
+        return ResponseEntity.ok().body(petTypeMapper.toPetTypeDTO(updatedPetType));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/add-breed")
     public ResponseEntity<?> addBreed(@RequestBody @Valid BreedDTO breedDTO) {
         var breeds = breedService.getAllBreeds();
@@ -278,5 +290,18 @@ public class PetController {
         }
         breedService.deleteBreed(breed);
         return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/breeds/{breedId}")
+    public ResponseEntity<?> updateBreed(@PathVariable Integer breedId, @RequestBody @Valid BreedDTO breedDTO) {
+        var breed = breedService.getBreedById(breedId);
+        if (breed == null) {
+            throw new NoDataFoundException("Nu a fost gasita nicio rasa cu id-ul " + breedId);
+        }
+        breed.setName(breedDTO.getName());
+        breed.setPetType(petTypeService.getPetTypeById(breedDTO.getPetType().getId()));
+        Breed updatedBreed = breedService.saveBreed(breed);
+        return ResponseEntity.ok().body(breedMapper.toBreedDTO(updatedBreed));
     }
 }

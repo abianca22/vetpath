@@ -1,8 +1,9 @@
-import {useContext, useEffect, useState} from "react";
-import {AuthContext} from "../api/authContext.ts";
-import {Button, Col, Container, Row, Table} from "react-bootstrap";
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../api/authContext.ts";
 import SuccessToast from "../components/SuccessToast.tsx";
 import ErrorToast from "../components/ErrorToast.tsx";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faSquareCheck} from "@fortawesome/free-solid-svg-icons";
 
 export default function SendRequestPage() {
     const auth = useContext(AuthContext);
@@ -11,104 +12,84 @@ export default function SendRequestPage() {
     const [showError, setShowError] = useState(false);
     const [error, setError] = useState(null);
 
-    const handleAcceptRequest = (id) => {
-        try {
-            const reqOpts = {
-                method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${auth.token}`
-                }
-            };
-            const acceptRequest = async () => {
-                await fetch(`http://localhost:8081/api/admin/users/${id}/change-role?approved=true`, reqOpts);
-                const res = await fetch(`http://localhost:8081/api/admin/users/requests`, {
-                    method: "GET",
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`
-                    }
-                });
-                setUsers(await res.json()
-                );
-            };
-            acceptRequest();
-            setShowSuccess(true);
-        }
-        catch(err) {
-            setShowError(true);
-            setError(err);
-        }
-    }
+    const apiBase = "http://localhost:8081/api/admin/users";
+    const authHeader = { Authorization: `Bearer ${auth.token}` };
 
-    const handleDeclineRequest = (id) => {
-        const reqOpts = {
-            method: "POST",
-            headers: {
-                'Authorization': `Bearer ${auth.token}`
-            }
-        };
-        const declineRequest = async () => {
-            await fetch(`http://localhost:8081/api/admin/users/${id}/change-role?approved=false`, reqOpts);
-            const resUsers = await fetch(`http://localhost:8081/api/admin/users/requests`,
-                {
-                    method: "GET",
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`
-                    }
-                });
-            setUsers(await resUsers.json());
-        };
-        declineRequest();
-    }
+    const fetchRequests = async () => {
+        const res = await fetch(`${apiBase}/requests`, { headers: authHeader });
+        setUsers(await res.json());
+    };
+
+    const handleAcceptRequest = async (id) => {
+        try {
+            await fetch(`${apiBase}/${id}/change-role?approved=true`, { method: "POST", headers: authHeader });
+            await fetchRequests();
+            setShowSuccess(true);
+        } catch (err) { setError(err); setShowError(true); }
+    };
+
+    const handleDeclineRequest = async (id) => {
+        try {
+            await fetch(`${apiBase}/${id}/change-role?approved=false`, { method: "POST", headers: authHeader });
+            await fetchRequests();
+        } catch (err) { setError(err); setShowError(true); }
+    };
 
     useEffect(() => {
-        const reqOpts = {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${auth.token}`
-            }
-        }
-        const fetchUsers = async () => {
-            const res = await fetch(`http://localhost:8081/api/admin/users/requests`,
-                reqOpts);
-            setUsers(await res.json());
-        }
-        fetchUsers();
+        const getRequests = async () => {
+        fetchRequests();
+    }
+    getRequests();
     }, []);
 
     return (
-        <Container className="py-3 d-flex flex-grow-1" fluid>
-                        <Row className="w-100 justify-content-center">
-                            <Col className="col-10">
-                                <h3 className="text-center">Solicitari pentru rolul de medic veterinar</h3>
-                                <div className="table-responsive text-center">
-                                    <Table className="mt-5">
-                                        <thead>
-                                        <tr>
-                                            <th>Utilizatori</th>
-                                            <th>Actiuni</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {(users && users.length > 0) ? users.map(user =>
-                                            <tr key={user.username}>
-                                                <td>{user.username}</td>
-                                                <td>
-                                                    <Button variant="success" className="mx-2" onClick={() => {handleAcceptRequest(user.id)}}>Accepta</Button>
-                                                    <Button variant="danger" onClick={() => {handleDeclineRequest(user.id)}}>Respinge</Button>
-                                                </td>
-                                            </tr>
-                                            ) :
-                                            <tr>
-                                            <td colSpan={2} className="text-center">Nu exista cereri neprocesate</td>
-                                            </tr>
-                                        }
-                                        </tbody>
-                                    </Table>
-                                </div>
-                            </Col>
-                        </Row>
-            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message="Datele au fost modificate cu succes!"/>
-            <ErrorToast close={() => setShowError(false)} show={showError} message={error}/>
-        </Container>
+        <div className="space-y-4">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900">Cereri</h1>
+                <p className="mt-0.5 text-sm text-slate-400">Solicitări pentru rolul de medic veterinar</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
+                {!users || users.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                        <FontAwesomeIcon icon={faSquareCheck} size="3x" className="text-emerald-600"/>
+                        <p className="mt-3 text-sm">Nu există cereri neprocesate</p>
+                    </div>
+                ) : users.map(user => (
+                    <div key={user.username} className="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-700">
+                            {user.username?.[0]?.toUpperCase()}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-800">{user.username}</p>
+                            <p className="text-xs text-slate-400">Solicită: medic veterinar</p>
+                        </div>
+
+                        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                            În așteptare
+                        </span>
+
+                        <div className="flex gap-2 shrink-0">
+                            <button
+                                onClick={() => handleAcceptRequest(user.id)}
+                                className="rounded-xl bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+                            >
+                                Acceptă
+                            </button>
+                            <button
+                                onClick={() => handleDeclineRequest(user.id)}
+                                className="rounded-xl border border-red-200 bg-red-50 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
+                            >
+                                Respinge
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <SuccessToast close={() => setShowSuccess(false)} show={showSuccess} message="Cererea a fost procesată cu succes!" />
+            <ErrorToast close={() => setShowError(false)} show={showError} message={error} />
+        </div>
     );
 }

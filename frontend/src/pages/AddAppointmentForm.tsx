@@ -1,218 +1,131 @@
-import {useContext, useEffect, useState} from "react";
-import {Button, Form, Modal, Row, Col, FormSelect} from "react-bootstrap";
-import {
-    addAppointment,
-    findPetByOwnerAndName,
-    getAllClinics,
-    getClinicById,
-    getSlots
-} from "../api/api.ts";
-import {AuthContext} from "../api/authContext.ts";
+import { useContext, useEffect, useState } from "react";
+import { addAppointment, findPetByOwnerAndName, getAllClinics, getClinicById, getSlots } from "../api/api.ts";
+import { AuthContext } from "../api/authContext.ts";
+import ModalShell, { ErrorMsg, Field, PrimaryBtn, SecondaryBtn, VetSelect } from "../components/ModalShell.tsx";
 
 export default function AddAppointmentForm(props) {
     const auth = useContext(AuthContext);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [clinics, setClinics] = useState([]);
     const [vets, setVets] = useState([]);
     const [slots, setSlots] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState(null);
     const [selectedVet, setSelectedVet] = useState(null);
-    const [selectedSlot, setSelectedSlot] = useState('');
+    const [selectedSlot, setSelectedSlot] = useState<string>("");
     const [selectedPet, setSelectedPet] = useState(null);
     const [pets, setPets] = useState([]);
 
     async function loadVetsByClinic(clinicId) {
-        const currentSelectedClinic = await getClinicById(clinicId);
-
-        setVets((currentSelectedClinic.vets !== null && currentSelectedClinic.vets !== undefined) ? currentSelectedClinic.vets : []);
-        if (currentSelectedClinic.vets.length !== 0) {
-            setSelectedVet(currentSelectedClinic.vets[0].id);
-            const options = {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            } as const;
-            const date = new Intl.DateTimeFormat('en-GB', options).format(new Date()).replaceAll('/', '.').replace(', ', ' ');
-            let availableSlots = await getSlots(auth.token, currentSelectedClinic.vets[0].username, false, date, null);
-            availableSlots = availableSlots.filter(slot => slot.status.includes('AVAILABLE') && slot.clinic.id === clinicId);
-            setSlots(availableSlots);
-            if (availableSlots.length !== 0) {
-                setSelectedSlot(availableSlots[0].id.toString());
-            }
-            await loadSlotsByVet(currentSelectedClinic.vets[0].id, currentSelectedClinic.id);
+        const clinic = await getClinicById(clinicId);
+        setVets(clinic.vets ?? []);
+        if (clinic.vets?.length > 0) {
+            setSelectedVet(clinic.vets[0].id);
+            await loadSlotsByVetAndClinic(clinic.vets[0].username, clinicId);
         }
     }
 
+    async function loadSlotsByVetAndClinic(vetUsername: string, clinicId) {
+        const options = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false } as const;
+        const date = new Intl.DateTimeFormat("en-GB", options).format(new Date()).replaceAll("/", ".").replace(", ", " ");
+        let available = await getSlots(auth.token, vetUsername, false, date, null, false);
+        available = available.filter((s) => s.status.includes("AVAILABLE") && s.clinic.id == clinicId);
+        setSlots(available);
+        setSelectedSlot(available[0]?.id?.toString() ?? "");
+    }
 
     async function loadSlotsByVet(vetId, clinicId) {
-        console.log(vetId, clinicId);
-        const vet = vets.find(v => v.id === vetId);
+        const vet = vets.find((v) => v.id == vetId);
         if (!vet) return;
-        const vetUsername = vet.username;
-        const options = {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        } as const;
-        const date = new Intl.DateTimeFormat('en-GB', options).format(new Date()).replaceAll('/', '.').replace(', ', ' ');
-        let availableSlots = await getSlots(auth.token, vetUsername, false, date, null);
-        availableSlots = availableSlots.filter(slot => slot.status.includes('AVAILABLE') && slot.clinic.id === clinicId);
-        setSlots(availableSlots);
-        if (availableSlots.length !== 0) {
-            setSelectedSlot(availableSlots[0].id.toString());
-        }
+        await loadSlotsByVetAndClinic(vet.username, clinicId);
     }
 
-
     useEffect(() => {
-        const fetchClinics = async() => {
-            const res = await getAllClinics(null, null);
-            setClinics(res);
-            if (res.length !== 0 && selectedClinic === null) {
-                setSelectedClinic(res[0].id);
-                await loadVetsByClinic(res[0].id);
+        const init = async () => {
+            const [allClinics, allPets] = await Promise.all([
+                getAllClinics(null, null),
+                findPetByOwnerAndName(auth.token, auth.user.username),
+            ]);
+            setClinics(allClinics);
+            setPets(allPets);
+            if (allPets.length > 0) setSelectedPet(allPets[0].id);
+            if (allClinics.length > 0) {
+                setSelectedClinic(allClinics[0].id);
+                await loadVetsByClinic(allClinics[0].id);
             }
-        }
-        fetchClinics();
-
-        const fetchPets = async() => {
-            const res = await findPetByOwnerAndName(auth.token, auth.user.username);
-            setPets(res);
-            if (res.length !== 0 && selectedPet === null) {
-                setSelectedPet(res[0].id);
-            }
-        }
-        fetchPets();
+        };
+        init();
     }, []);
 
-
     useEffect(() => {
-        console.log(selectedPet, selectedClinic);
-        loadSlotsByVet(selectedVet, selectedClinic);
+        if (selectedVet && selectedClinic) loadSlotsByVet(selectedVet, selectedClinic);
     }, [props.reload, props.appointments]);
 
-
-    async function postData() {
-        const saveApp = async () => {
-            try {
-                const res = await addAppointment(auth.token, parseInt(selectedSlot), selectedPet);
-                sessionStorage.setItem("sendEmailAppointmentId", res.id.toString());
-                setError(null);
-                props.showToast();
-                props.save();
-            } catch (err) {
-                sessionStorage.removeItem("sendEmailAppointmentId");
-                setError(err.message);
-            }
-        }
-        saveApp();
-    }
-
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
-        postData();
+        try {
+            const res = await addAppointment(auth.token, parseInt(selectedSlot), selectedPet);
+            sessionStorage.setItem("sendEmailAppointmentId", res.id.toString());
+            setError(null);
+            props.showToast?.();
+            props.save();
+        } catch (err) {
+            sessionStorage.removeItem("sendEmailAppointmentId");
+            setError(err.message);
+        }
     }
 
-    return <>
-        <Modal show={props.open} onHide={() => {props.close(); setError(null)}} centered>
-            <Modal.Header closeButton className="border-bottom pb-3">
-                <Modal.Title className="fw-semibold">Adaugă o programare</Modal.Title>
-            </Modal.Header>
-            <Modal.Body className="px-4 py-3">
-                {error && error.split('\n').map(err => <p key={err.split(' ')[0]} className="text-danger mb-1"><small>{err}</small>
-                </p>)}
-                <Form id="add-appointment-form" onSubmit={handleSubmit}>
-                    <Row className="g-3">
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="clinic">
-                                <Form.Label className="fw-medium mb-1">Clinica</Form.Label>
-                                <FormSelect name="clinic" value={selectedClinic}
-                                            onChange={(e) => {
-                                                setSelectedClinic(e.target.value);
-                                                loadVetsByClinic(e.target.value);
-                                            }} aria-label="Clinica" required>
-                                    {clinics && clinics.length > 0 ? clinics.map(clinic => (
-                                        <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
-                                    )) : <option disabled>Nu s-au găsit clinici</option>}
-                                </FormSelect>
-                            </Form.Group>
-                        </Col>
+    const close = () => { props.close(); setError(null); };
 
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="vet">
-                                <Form.Label className="fw-medium mb-1">Medic</Form.Label>
-                                <FormSelect name="vet" aria-label="Medic" value={selectedVet}
-                                            onChange={(e) => {
-                                                setSelectedVet(e.target.value);
-                                                loadSlotsByVet(e.target.value, selectedClinic);
-                                            }} required>
-                                    {vets && vets.length > 0 ? vets.map(vet => (
-                                        <option key={vet.id} value={vet.id}>{vet.firstName} {vet.lastName} ({vet.username})</option>
-                                    )) : <option disabled>Nu s-au găsit medici</option>}
-                                </FormSelect>
-                            </Form.Group>
-                        </Col>
+    return (
+        <ModalShell
+            open={props.open}
+            onClose={close}
+            title="Adaugă o programare"
+            footer={<>
+                <SecondaryBtn onClick={close}>Închide</SecondaryBtn>
+                <PrimaryBtn type="submit" form="add-appointment-form">Salvare</PrimaryBtn>
+            </>}
+        >
+            <form id="add-appointment-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <ErrorMsg error={error} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <Field label="Clinică" htmlFor="clinic">
+                        <VetSelect id="clinic" name="clinic" value={selectedClinic ?? ""}
+                            onChange={e => { setSelectedClinic(e.target.value); loadVetsByClinic(e.target.value); }} required>
+                            {clinics.length > 0
+                                ? clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                : <option disabled>Nu s-au găsit clinici</option>}
+                        </VetSelect>
+                    </Field>
 
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="slot">
-                                <Form.Label className="fw-medium mb-1">Slot</Form.Label>
-                                <FormSelect name="slot" aria-label="Data" value={selectedSlot}
-                                            onChange={(e) => setSelectedSlot(e.target.value)} required>
-                                    {slots && slots.length > 0 ? slots.map(slot => (
-                                        <option key={slot.id} value={slot.id}>{slot.slot}</option>
-                                    )) : <option disabled >Nu s-au găsit locuri disponibile</option>}
-                                </FormSelect>
-                            </Form.Group>
-                        </Col>
+                    <Field label="Medic" htmlFor="vet">
+                        <VetSelect id="vet" name="vet" value={selectedVet ?? ""}
+                            onChange={e => { setSelectedVet(e.target.value); loadSlotsByVet(e.target.value, selectedClinic); }} required>
+                            {vets.length > 0
+                                ? vets.map(v => <option key={v.id} value={v.id}>{v.firstName} {v.lastName} ({v.username})</option>)
+                                : <option disabled>Nu s-au găsit medici</option>}
+                        </VetSelect>
+                    </Field>
 
-                        <Col xs={12} md={6}>
-                            <Form.Group controlId="pet">
-                                <Form.Label className="fw-medium mb-1">Animal de companie</Form.Label>
-                                <FormSelect name="pet" aria-label="Animal de companie" value={selectedPet}
-                                            onChange={(e) => setSelectedPet(e.target.value)} required>
-                                    {pets && pets.length > 0 ? pets.map(pet => (
-                                        <option key={pet.id} value={pet.id}>{pet.name}</option>
-                                    )) : <option disabled>Nu s-au găsit animale de companie</option>}
-                                </FormSelect>
-                            </Form.Group>
-                        </Col>
+                    <Field label="Slot disponibil" htmlFor="slot">
+                        <VetSelect id="slot" name="slot" value={selectedSlot}
+                            onChange={e => setSelectedSlot(e.target.value)} required>
+                            {slots.length > 0
+                                ? slots.map(s => <option key={s.id} value={s.id}>{s.slot}</option>)
+                                : <option disabled>Nu s-au găsit locuri disponibile</option>}
+                        </VetSelect>
+                    </Field>
 
-                        {/*<Col xs={12} md={6}>*/}
-                        {/*    <Form.Group controlId="slot-start">*/}
-                        {/*        <Form.Label className="fw-medium mb-1">Data start</Form.Label>*/}
-                        {/*        <div>*/}
-                        {/*            <DatePicker*/}
-                        {/*                format="dd.MM.yyyy HH:mm"*/}
-                        {/*                value={slot}*/}
-                        {/*                onChange={setSlot}*/}
-                        {/*                style={{width: '100%'}}*/}
-                        {/*                container={() => document.body}*/}
-                        {/*                oneTap={false}*/}
-                        {/*            />*/}
-                        {/*        </div>*/}
-                        {/*    </Form.Group>*/}
-                        {/*</Col>*/}
-                        {/*<Col xs={12} md={6}>*/}
-                        {/*    <Form.Group controlId="slots-number">*/}
-                        {/*        <Form.Label className="fw-medium mb-1">Numar sloturi (durata interval = 30 min)</Form.Label>*/}
-                        {/*        {*/}
-                        {/*            <Form.Control name="slotsCount" type="number" min={1} max={20} defaultValue={1}/>*/}
-                        {/*        }*/}
-                        {/*    </Form.Group>*/}
-                        {/*</Col>*/}
-                    </Row>
-                </Form>
-            </Modal.Body>
-            <Modal.Footer className="border-top pt-3">
-                <Button variant="secondary" onClick={() => {props.close(); setError(null)}}>Închide</Button>
-                <Button type="submit" variant="primary" form="add-appointment-form">Salvare</Button>
-            </Modal.Footer>
-        </Modal>
-    </>
+                    <Field label="Animal de companie" htmlFor="pet">
+                        <VetSelect id="pet" name="pet" value={selectedPet ?? ""}
+                            onChange={e => setSelectedPet(e.target.value)} required>
+                            {pets.length > 0
+                                ? pets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                                : <option disabled>Nu s-au găsit animale</option>}
+                        </VetSelect>
+                    </Field>
+                </div>
+            </form>
+        </ModalShell>
+    );
 }

@@ -1,139 +1,121 @@
-import {useContext, useEffect, useState} from "react";
-import {AuthContext} from "../api/authContext.ts";
-import {useNavigate} from "react-router-dom";
-import {getAllClinics} from "../api/api.ts";
-import {Button, Col, Container, Form, Row, Table} from "react-bootstrap";
-import {isAdmin} from "../api/roles.ts";
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../api/authContext.ts";
+import { useNavigate } from "react-router-dom";
+import { getAllClinics } from "../api/api.ts";
+import { isAdmin } from "../api/roles.ts";
 import AddClinicForm from "./AddClinicForm.tsx";
 import SuccessToast from "../components/SuccessToast.tsx";
+import ErrorToast from "../components/ErrorToast.tsx";
+import { SearchIcon } from "../components/Icons.tsx";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faBuilding} from "@fortawesome/free-regular-svg-icons";
 
 export default function Clinics() {
     const auth = useContext(AuthContext);
     const [data, setData] = useState([]);
     const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState("");
     const [lastVetString, setLastVetString] = useState("");
-    const [lastClinicString, setLastClinicString] = useState("");
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
-
     const [showAddModal, setShowAddModal] = useState(false);
     const [closeCount, setCloseCount] = useState(0);
-
-    const openAddModal = () => {
-        setShowAddModal(true);
-    }
-    const closeAddModalWithCount = () => {
-        setShowAddModal(false);
-        setCloseCount(prev => prev + 1);
-    }
-    const closeAddModalNoCount = () => {
-        setShowAddModal(false);
-    }
-
-    async function handleSearch(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        let clinic = formData.get("name");
-        setLastClinicString(clinic.toString());
-        let vet = formData.get("employee");
-        setLastVetString(vet.toString())
-        if (clinic === "") {
-            clinic = null;
-        }
-        if (vet === "") {
-            vet = null;
-        }
-        try {
-            const res = await getAllClinics(clinic, vet);
-            setData(res);
-        }
-        catch(err) {
-            console.error(err);
-        }
-    }
-
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const getClinics = async () => {
-            const res = await getAllClinics(null, null);
-            setData(res);
-        };
+        const getClinics = async () => { setData(await getAllClinics(null, null)); };
         getClinics();
-        const checkClinicDeletion = function() {
-            if (sessionStorage.getItem("deletedClinicId") !== null) {
+        const loadMessages = () => {
+            if (sessionStorage.getItem("deletedClinicId")) {
                 setShowSuccess(true);
-                setSuccessMessage("Datele au fost sterse cu success");
+                setSuccessMessage("Clinica a fost ștearsă cu succes");
                 sessionStorage.removeItem("deletedClinicId");
             }
         }
-        checkClinicDeletion();
+        loadMessages();
     }, [closeCount]);
 
+    async function handleSearch(e) {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const clinic = fd.get("name") || null;
+        const vet = fd.get("employee") || null;
+        try { setData(await getAllClinics(clinic || null, vet || null)); } catch (err) { setError(err.message); }
+    }
+
     return (
-            <Container className="d-flex flex-grow-1" fluid>
-                    <Row className="align-items-start h-100 w-100 justify-content-center">
-                        <Col className="col-9">
-                            <h1 className="m-5 text-center">Clinici inregistrate</h1>
-                            <Form id="search-for-clinic-form" onSubmit={handleSearch} className="d-flex">
-                                <Form.Group className="m-2">
-                                    <Form.Label>Denumire</Form.Label>
-                                    <Form.Control type="text" name="name" value={lastClinicString} onChange={(e) => setLastClinicString(e.target.value)}>
-                                    </Form.Control>
-                                </Form.Group>
-                                <Form.Group className="m-2">
-                                    <Form.Label>Veterinar</Form.Label>
-                                    <Form.Control type="text" name="employee" value={lastVetString} onChange={(e) => setLastVetString(e.target.value)}>
-                                    </Form.Control>
-                                </Form.Group>
-                                <Form.Group className="m-2 d-flex align-items-end">
-                                    <Button className="mx-2" variant="primary" type="submit" form="search-for-clinic-form">Cautare</Button>
-                                    <Button variant="secondary" type="button" onClick={() => {
-                                        setLastClinicString("");
-                                        setLastVetString("");
-                                    }}>Resetare</Button>
-                                </Form.Group>
-                            </Form>
-                            <div className="table-responsive text-center">
-                                <Table className="mt-5">
-                                    <thead>
-                                    <tr>
-                                        <th>Nume</th>
-                                        <th>Actiuni</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {
-                                        data && data.length > 0 ? data.map(clinic => (
-                                            <tr key={clinic.id}>
-                                                <td>{clinic.name}</td>
-                                                <td>{
-                                                    <Button variant="success" className="my-1" type="button" onClick={() => {
-                                                        navigate('/clinics/' + clinic.id);
-                                                    }}>Detalii</Button>
-                                                }
-                                                </td>
-                                            </tr>
-                                        )) : <tr>
-                                            <td colSpan={3}>Nu exista rezultate</td>
-                                        </tr>
+        <div className="space-y-4">
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Clinici</h1>
+                    <p className="mt-0.5 text-sm text-slate-400">Clinicile veterinare înregistrate</p>
+                </div>
+                {auth.user && isAdmin(auth.user.roles) && (
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                    >
+                        + Adaugă clinică
+                    </button>
+                )}
+            </div>
 
-                                    }
-                                    </tbody>
-                                </Table>
-                                {
-                                    auth.user && isAdmin(auth.user.roles) && <div className="text-center">
-                                        <Button variant="primary" onClick={openAddModal}>Adaugare</Button>
-                                    </div>
-                                }
+            <form onSubmit={handleSearch} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-3/5 -translate-y-1/2 text-slate-400" size={15} />
+                    <input
+                        name="name"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Caută clinică..."
+                        className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                    />
+                </div>
+                <input
+                    name="employee"
+                    value={lastVetString}
+                    onChange={e => setLastVetString(e.target.value)}
+                    placeholder="Veterinar angajat..."
+                    className="w-48 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+                <button type="submit"
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                    Caută
+                </button>
+                <button type="button" onClick={() => { setSearchQuery(""); setLastVetString(""); }}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
+                    Reset
+                </button>
+            </form>
+
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
+                {data.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-slate-400">Nu există clinici înregistrate</div>
+                ) : data.map(clinic => (
+                    <div key={clinic.id} className="flex items-center justify-between px-5 py-4 transition hover:bg-slate-50 hover:cursor-pointer"
+                         onClick={() => navigate(`/clinics/${clinic.id}`)}
+                    >
+                        <div className="flex items-center gap-4">
+                            <FontAwesomeIcon icon={faBuilding} className="text-slate-400" size="2x" />
+                            <div className="flex flex-col gap-2">
+                                <span className="font-semibold text-slate-800">{clinic.name}</span>
+                                {clinic.address && (
+                                    <span className="text-xs text-slate-400">{clinic.address}</span>
+                                )}
                             </div>
-                        </Col>
-                    </Row>
-                <AddClinicForm open={showAddModal} save={closeAddModalWithCount} close={closeAddModalNoCount} showToast={() => {
-                    setSuccessMessage("Datele au fost salvate cu success");
-                    setShowSuccess(true);
-                }}/>
-                <SuccessToast message={successMessage} close={() => setShowSuccess(false)} show={showSuccess}></SuccessToast>
-            </Container>
-    )
-}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
+            <AddClinicForm
+                open={showAddModal}
+                save={() => { setShowAddModal(false); setCloseCount(p => p + 1); }}
+                close={() => setShowAddModal(false)}
+                showToast={() => { setSuccessMessage("Clinica a fost adăugată cu succes"); setShowSuccess(true); }}
+            />
+            <SuccessToast message={successMessage} close={() => setShowSuccess(false)} show={showSuccess} />
+            <ErrorToast show={!!error} close={() => setError(null)} message={error} />
+        </div>
+    );
+}

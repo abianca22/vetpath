@@ -37,8 +37,8 @@ public class InitializeDB implements CommandLineRunner {
             }
         });
 
-        PetType dog = PetType.builder().name("Dog").build();
-        PetType cat = PetType.builder().name("Cat").build();
+        PetType dog = PetType.builder().name("Câine").build();
+        PetType cat = PetType.builder().name("Pisică").build();
 
         var checkDog = petTypeService.getPetTypeByName(dog.getName());
         if (checkDog == null) {
@@ -52,8 +52,8 @@ public class InitializeDB implements CommandLineRunner {
         }
         checkCat = petTypeService.getPetTypeByName(cat.getName());
 
-        Breed maltese = Breed.builder().name("Maltese").petType(checkDog).build();
-        Breed siamese = Breed.builder().name("Siamese").petType(checkCat).build();
+        Breed maltese = Breed.builder().name("Maltez").petType(checkDog).build();
+        Breed siamese = Breed.builder().name("Siameză").petType(checkCat).build();
 
         var checkMaltese = breedService.getFirstBreedByName(maltese.getName());
         if (checkMaltese == null) {

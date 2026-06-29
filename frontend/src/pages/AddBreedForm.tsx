@@ -49,7 +49,7 @@
 //     </>
 // }
 
-import React, { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../api/authContext.ts";
 import { addBreed, getAllTypes } from "../api/api.ts";
 import { Button, Form, Container, Row, Col, FormSelect, Spinner, Alert } from "react-bootstrap";
@@ -89,7 +89,7 @@ export default function AddBreed(props) {
         fetchTypes();
     }, [props.type]);
 
-    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         const breedName = String(fd.get("breedName") || "").trim();

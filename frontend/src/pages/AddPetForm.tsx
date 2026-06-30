@@ -123,7 +123,7 @@ export default function AddPetForm(props) {
                     </Field>
 
                     <Field label="Data nașterii">
-                        <DatePicker format="dd.MM.yyyy" value={dob} onChange={setDob}
+                        <DatePicker format="dd.MM.yyyy" value={dob} onChange={setDob} placeholder="Selectare dată"
                             style={{ width: "100%" }} container={() => document.body} oneTap />
                     </Field>
 

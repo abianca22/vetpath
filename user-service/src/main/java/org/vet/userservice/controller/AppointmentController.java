@@ -184,9 +184,9 @@ public class AppointmentController {
             appointments = appointmentService.getAppointments(null, null, null, null, null, null, null, null);
         }
         if (vet.isPresent() && !vet.get().isEmpty()) {
-            appointments = appointments.stream().filter(appointment -> appointment.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase())
+            appointments = appointments.stream().filter(appointment -> appointment.getVet() != null && (appointment.getVet().getLastName().toLowerCase().contains(vet.get().toLowerCase())
             || appointment.getVet().getFirstName().toLowerCase().contains(vet.get().toLowerCase())
-            || appointment.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase())).toList();
+            || appointment.getVet().getUsername().toLowerCase().contains(vet.get().toLowerCase()))).toList();
         }
         if (pet.isPresent() && !pet.get().isEmpty()) {
             appointments = appointments.stream().filter(appointment -> appointment.getPet() != null && appointment.getPet().getName().toLowerCase().contains(pet.get().toLowerCase())).toList();

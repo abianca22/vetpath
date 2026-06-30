@@ -27,7 +27,7 @@ export default function Pagination({ total, page, pageSize, onChange }: Paginati
                 <button
                     onClick={() => onChange(page - 1)}
                     disabled={page === 1}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 disabled:cursor-default"
                 >
                     ←
                 </button>
@@ -55,7 +55,7 @@ export default function Pagination({ total, page, pageSize, onChange }: Paginati
                 <button
                     onClick={() => onChange(page + 1)}
                     disabled={page === totalPages}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sm text-slate-500 transition hover:bg-slate-100 disabled:opacity-30 disabled:cursor-default"
                 >
                     →
                 </button>

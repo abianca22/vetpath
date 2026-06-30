@@ -136,7 +136,7 @@ export default function Chat() {
                                 </>
                             ) : <>✨ Trimite întrebarea</>}
                         </button>
-                        {(answer || submittedQuestion) && (
+                        {(answer || submittedQuestion) && !loading && (
                             <button type="button" onClick={handleReset}
                                 className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-500 transition cursor-pointer"
                                 style={{ background: "transparent", border: "1px solid #e2e8f0" }}

@@ -9,6 +9,9 @@ import ErrorToast from "../components/ErrorToast.tsx";
 import { SearchIcon } from "../components/Icons.tsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faBuilding} from "@fortawesome/free-regular-svg-icons";
+import Pagination from "../components/Pagination.tsx";
+
+const PAGE_SIZE = 10;
 
 export default function Clinics() {
     const auth = useContext(AuthContext);
@@ -21,6 +24,7 @@ export default function Clinics() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [closeCount, setCloseCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         const getClinics = async () => { setData(await getAllClinics(null, null)); };
@@ -40,7 +44,7 @@ export default function Clinics() {
         const fd = new FormData(e.target);
         const clinic = fd.get("name") || null;
         const vet = fd.get("employee") || null;
-        try { setData(await getAllClinics(clinic || null, vet || null)); } catch (err) { setError(err.message); }
+        try { setData(await getAllClinics(clinic || null, vet || null)); setPage(1); } catch (err) { setError(err.message); }
     }
 
     return (
@@ -91,7 +95,7 @@ export default function Clinics() {
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
                 {data.length === 0 ? (
                     <div className="py-12 text-center text-sm text-slate-400">Nu există clinici înregistrate</div>
-                ) : data.map(clinic => (
+                ) : data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(clinic => (
                     <div key={clinic.id} className="flex items-center justify-between px-5 py-4 transition hover:bg-slate-50 hover:cursor-pointer"
                          onClick={() => navigate(`/clinics/${clinic.id}`)}
                     >
@@ -106,6 +110,9 @@ export default function Clinics() {
                         </div>
                     </div>
                 ))}
+                <div className="px-5">
+                    <Pagination total={data.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+                </div>
             </div>
 
             <AddClinicForm

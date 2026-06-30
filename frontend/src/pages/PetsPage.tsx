@@ -13,6 +13,9 @@ import {
     updatePetType,
 } from "../api/api.ts";
 import { SlidersIcon, ChevronDownIcon } from "../components/Icons.tsx";
+import Pagination from "../components/Pagination.tsx";
+
+const PAGE_SIZE = 10;
 import { useNavigate } from "react-router-dom";
 import {isAdmin, isVeterinarian} from "../api/roles.ts";
 import Confirm from "../components/Confirm.tsx";
@@ -55,6 +58,7 @@ function PetsTab() {
     const [lastName, setLastName] = useState("");
     const [lastType, setLastType] = useState("");
     const [lastBreed, setLastBreed] = useState("");
+    const [page, setPage] = useState(1);
 
     async function fetchBreedsByType(typeId: string) {
         try { setBreeds(await getBreedsByType(typeId)); } catch { setBreeds([]); }
@@ -65,6 +69,7 @@ function PetsTab() {
             setLoading(true);
             setPets(await filterPets(auth.token, owner ?? null, name ?? null, type ?? null, breed ?? null));
             setError(null);
+            setPage(1);
         } catch (err) { setPets([]); setError(String(err)); }
         finally { setLoading(false); }
     }
@@ -123,7 +128,7 @@ function PetsTab() {
                             <div className="flex flex-col gap-1">
                                 <label className="text-xs font-medium text-slate-500">Specie</label>
                                 <select name="type" value={lastType}
-                                    onChange={e => { setLastType(e.target.value); fetchBreedsByType(e.target.value); }}
+                                    onChange={e => { setLastType(e.target.value); fetchBreedsByType(e.target.value); setPage(1);}}
                                     className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
                                     <option value="">Toate speciile</option>
                                     {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -154,8 +159,9 @@ function PetsTab() {
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
                 </div>
             ) : pets.length > 0 ? (
+                <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {pets.map((pet) => (
+                    {pets.slice((page - 1) * 9, page * 9).map((pet) => (
                         <div key={pet.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:cursor-pointer"
                              onClick={() => navigate(`/pets/${pet.owner.username}/${pet.name}`)}>
                             <div className="flex items-center gap-3">
@@ -181,6 +187,10 @@ function PetsTab() {
                             </div>
                         </div>
                     ))}
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 shadow-sm">
+                    <Pagination total={pets.length} page={page} pageSize={9} onChange={setPage} />
+                </div>
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -212,6 +222,7 @@ function BreedsTab() {
     const [editId, setEditId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
     const [editTypeId, setEditTypeId] = useState("");
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         const load = async () => {
@@ -234,7 +245,7 @@ function BreedsTab() {
             await addBreed(auth.token, newName.trim(), newTypeId);
             setNewName(""); setShowAdd(false); setAddError(null);
             setSuccessMessage("Rasa a fost adăugată"); setShowSuccess(true);
-            setReloadCount(p => p + 1);
+            setReloadCount(p => p + 1); setPage(1);
         } catch (err) { setAddError(err.message); }
     }
 
@@ -266,10 +277,12 @@ function BreedsTab() {
             <div className="flex items-center gap-3 flex-wrap justify-between">
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Caută rasă..."
+                        <input value={searchQ} onChange={e => {
+                            setSearchQ(e.target.value); setPage(1);
+                        }} placeholder="Caută rasă..."
                             className="rounded-xl border border-slate-200 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
                     </div>
-                    <select value={filterType} onChange={e => setFilterType(e.target.value)}
+                    <select value={filterType} onChange={e => {setFilterType(e.target.value); setPage(1);}}
                         className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
                         <option value="">Toate speciile</option>
                         {types.map((t) => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
@@ -318,6 +331,7 @@ function BreedsTab() {
                 ) : visible.length === 0 ? (
                     <div className="py-12 text-center text-sm text-slate-400">Nu au fost găsite rase</div>
                 ) : (
+                    <>
                     <table className="w-full">
                         <thead>
                             <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
@@ -330,7 +344,7 @@ function BreedsTab() {
                             </tr>
                         </thead>
                         <tbody>
-                            {visible.map((b) => (
+                            {visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((b) => (
                                 <tr key={b.id} style={{ borderBottom: "1px solid #f8fafc" }}
                                     onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
                                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -385,6 +399,10 @@ function BreedsTab() {
                             ))}
                         </tbody>
                     </table>
+                    <div className="px-5">
+                        <Pagination total={visible.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+                    </div>
+                    </>
                 )}
             </div>
 
@@ -413,6 +431,7 @@ function TypesTab() {
     const [searchQ, setSearchQ] = useState("");
     const [editId, setEditId] = useState<number | null>(null);
     const [editName, setEditName] = useState("");
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         const load = async () => {
@@ -458,7 +477,10 @@ function TypesTab() {
         <div className="space-y-4 pt-4">
             <div className="flex items-center gap-3 justify-between flex-wrap">
                 <div className="relative">
-                    <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Caută specie..."
+                    <input value={searchQ} onChange={e => {
+                        setSearchQ(e.target.value);
+                        setPage(1);
+                    }} placeholder="Caută specie..."
                         className="rounded-xl border border-slate-200 bg-white pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
                 </div>
                 <button type="button" onClick={() => setShowAdd(v => !v)} style={{ border: "none" }}
@@ -497,6 +519,7 @@ function TypesTab() {
                 ) : visible.length === 0 ? (
                     <div className="py-12 text-center text-sm text-slate-400">Nu au fost găsite specii</div>
                 ) : (
+                    <>
                     <table className="w-full">
                         <thead>
                             <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
@@ -509,7 +532,7 @@ function TypesTab() {
                             </tr>
                         </thead>
                         <tbody>
-                            {visible.map((t) => (
+                            {visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((t) => (
                                 <tr key={t.id} style={{ borderBottom: "1px solid #f8fafc" }}
                                     onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
                                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -555,6 +578,10 @@ function TypesTab() {
                             ))}
                         </tbody>
                     </table>
+                    <div className="px-5">
+                        <Pagination total={visible.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+                    </div>
+                    </>
                 )}
             </div>
 

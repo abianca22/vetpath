@@ -9,11 +9,12 @@ import {
 import { DatePicker } from "rsuite";
 import {
     SlidersIcon, ChevronDownIcon,
-    CalendarSmallIcon, HeadphonesIcon, BuildingSmallIcon,
+    CalendarSmallIcon, HeadphonesIcon, BuildingSmallIcon, ArrowUpDownIcon,
 } from "../components/Icons.tsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faBookMedical} from "@fortawesome/free-solid-svg-icons";
 import Pagination from "../components/Pagination.tsx";
+import moment from "moment";
 
 const PAGE_SIZE = 10;
 
@@ -36,6 +37,7 @@ export default function RecordsList() {
     const [page, setPage] = useState(1);
     const [start, setStart] = useState(null);
     const [end, setEnd] = useState(null);
+    const [sortAsc, setSortAsc] = useState(false);
 
     async function fetchBreedsByType(typeId) {
         try { setBreeds(await getBreedsByType(typeId)); }
@@ -118,10 +120,23 @@ export default function RecordsList() {
             catch (err) {
                 console.error(err.message);
             }
+            setRecords(records
+                .sort((a, b) => {
+                    const da = moment(`${a.recordDate.split(" ")[0].split(".").reverse().join("-")} ${a.recordDate.split(" ")[1]}`);
+                    const db = moment(`${b.recordDate.split(" ")[0].split(".").reverse().join("-")} ${b.recordDate.split(" ")[1]}`);
+                    return sortAsc ? da.diff(db) : db.diff(da);
+                }));
         }
         loadRecords();
 
     }, []);
+
+    const filtered = records
+        .sort((a, b) => {
+            const da = moment(`${a.recordDate.split(" ")[0].split(".").reverse().join("-")} ${a.recordDate.split(" ")[1]}`);
+            const db = moment(`${b.recordDate.split(" ")[0].split(".").reverse().join("-")} ${b.recordDate.split(" ")[1]}`);
+            return sortAsc ? da.diff(db) : db.diff(da);
+        });
 
     function goToDetails(id: number) {
         sessionStorage.setItem("recordId", String(id));
@@ -158,6 +173,14 @@ export default function RecordsList() {
                             </span>
                         )}
                         <ChevronDownIcon className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setSortAsc((v) => !v); setPage(1); }}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                    >
+                        <ArrowUpDownIcon />
+                        Sortare {sortAsc ? "↑" : "↓"}
                     </button>
                 </div>
 
@@ -238,12 +261,12 @@ export default function RecordsList() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100 overflow-hidden">
-                {records.length === 0 ? (
+                {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                         <span className="text-4xl">📋</span>
                         <p className="mt-3 text-sm">Nu există rapoarte medicale</p>
                     </div>
-                ) : records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => (
+                ) : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => (
                     <div
                         key={r.id}
                         onClick={() => goToDetails(r.id)}

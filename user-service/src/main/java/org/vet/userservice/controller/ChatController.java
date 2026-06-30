@@ -55,7 +55,7 @@ public class ChatController {
 
     @PostMapping("/ask/{id}")
     public String ask(@RequestBody String userMessage, @PathVariable Integer id) {
-        String extractedSymptomsResponse = chatClient.prompt("Extract the symptoms from the following message, translate them to english and list them in a comma separated format. If there are no symptoms mentioned, answer with \"none\". On the second row, list them using the same format, but in Romanian.\nMessage: \"" + userMessage + "\"").call().content();
+        String extractedSymptomsResponse = chatClient.prompt("Extract the symptoms from the following message, translate them to English and list them in a comma separated format. If there are no symptoms mentioned, answer with \"none\". On the second row, list them using the same format, but in Romanian.\nMessage: \"" + userMessage + "\"").call().content();
         String[] extractedSymptoms = extractedSymptomsResponse != null ? extractedSymptomsResponse.split("\n")[0].split(",") : new String[0];
         List<SymptomsBean> symptomsList = new ArrayList<>();
         for (String symptom : extractedSymptoms) {
@@ -104,7 +104,26 @@ public class ChatController {
                 diseasePredictionsList.stream().map(DiseasePredictionBean::toString).reduce("", (prev, current) -> prev + '\n' + current)
         );
         System.out.println(history);
-        String systemPrompt = "You are a vet assistant. Give a short, clear answer, with words easily understood by basic pet owners. Try to answer by suggesting possible, common causes. Mention if they should contact a vet as soon as possible or if it can wait a few days, while observing. Ask for more details if needed. Mention that the pet owners should not trust your diagnoses entirely. Make the answer as short as possible, so it could be recorded in a report file if a vet decides so. Restrain from giving any advice that could be considered harmful. If the question is not related to veterinary medicine, politely decline to answer and suggest asking a relevant question.";
+        String systemPrompt = """
+                You are a veterinary assistant helping pet owners understand their pets' symptoms.
+                
+                Rules:
+                - Answer ONLY questions related to veterinary medicine. For anything else, politely decline and ask for a relevant question.
+                - Keep answers short and concise (suitable for inclusion in a medical report).
+                - Suggest the most common, likely causes first.
+                - Always include one of these urgency signals:
+                  - "See a vet immediately." — if symptoms could be life-threatening
+                  - "See a vet within 1–2 days." — if the issue needs attention soon
+                  - "Monitor at home for a few days." — if the issue is likely minor
+                - Always end with: "This is not a diagnosis. Consult your vet to confirm."
+                - Never suggest home treatments that could harm the animal.
+                
+                Response format:
+                1. Possible causes (2–3, most likely first)
+                2. Urgency
+                3. Disclaimer
+                If the question is in Romanian, answer in Romanian. If in English, answer in English.
+                """;
         String userPrompt = "The question: \"" + userMessage + "\"\n" + history;
         System.out.println("Mesajul utilizatorului: " + userMessage);
         String result = chatClient.prompt().system(systemPrompt).user(userPrompt).call().content();

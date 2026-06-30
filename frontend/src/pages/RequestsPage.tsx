@@ -4,6 +4,7 @@ import SuccessToast from "../components/SuccessToast.tsx";
 import ErrorToast from "../components/ErrorToast.tsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faSquareCheck} from "@fortawesome/free-solid-svg-icons";
+import {useNavigate} from "react-router-dom";
 
 export default function SendRequestPage() {
     const auth = useContext(AuthContext);
@@ -11,6 +12,7 @@ export default function SendRequestPage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [showError, setShowError] = useState(false);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     const apiBase = "http://localhost:8081/api/admin/users";
     const authHeader = { Authorization: `Bearer ${auth.token}` };
@@ -61,14 +63,9 @@ export default function SendRequestPage() {
                             {user.username?.[0]?.toUpperCase()}
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 mt-3 hover:cursor-pointer" onClick={() => navigate(`/user/${user.username}`)}>
                             <p className="font-semibold text-slate-800">{user.username}</p>
-                            <p className="text-xs text-slate-400">Solicită: medic veterinar</p>
                         </div>
-
-                        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                            În așteptare
-                        </span>
 
                         <div className="flex gap-2 shrink-0">
                             <button
@@ -79,7 +76,7 @@ export default function SendRequestPage() {
                             </button>
                             <button
                                 onClick={() => handleDeclineRequest(user.id)}
-                                className="rounded-xl border border-red-200 bg-red-50 px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition"
+                                className="rounded-xl bg-red-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-600 transition"
                             >
                                 Respinge
                             </button>

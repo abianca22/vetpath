@@ -133,7 +133,7 @@ export default function Appointments() {
             const res = await getAppointments(
                 auth.token,
                 pet || null, owner || null, start, end,
-                appStatus === "BOOKED" ? true : null,
+                appStatus === "BOOKED" ? true : (appStatus === 'CANCELLED' ? false : null),
                 null, clinic || null, vet || null
             );
             setAppointments(res);
@@ -180,7 +180,6 @@ export default function Appointments() {
 
     return (
         <div className="space-y-4">
-            {/* ── PAGE HEADER ── */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Programări</h1>
@@ -194,7 +193,6 @@ export default function Appointments() {
                 </button>
             </div>
 
-            {/* ── FILTER BAR ── */}
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex justify-content-start gap-3">
@@ -329,7 +327,6 @@ export default function Appointments() {
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
-                {/* ── APPOINTMENT ROWS ── */}
                 <div className="divide-y divide-slate-100">
                     {error && (
                         <div className="px-5 py-4 text-sm text-red-500">
@@ -353,10 +350,8 @@ export default function Appointments() {
                                 onClick={() => goToDetails(app.id)}
                                 className="flex items-center gap-5 px-5 py-4 cursor-pointer transition-colors hover:bg-slate-50"
                             >
-                                {/* Avatar */}
                                 <PetAvatar />
 
-                                {/* Pet + owner */}
                                 <div className="w-32 min-w-0">
                                     <p className="truncate font-semibold text-slate-800">
                                         {app.pet?.name ?? <em>Animal șters</em>}
@@ -367,7 +362,6 @@ export default function Appointments() {
                                     </p>
                                 </div>
 
-                                {/* Date + time */}
                                 <div className="w-36 min-w-0 space-y-0.5">
                                     <p className="flex items-center gap-1.5 text-sm text-slate-600">
                                         <CalendarSmallIcon />
@@ -379,7 +373,6 @@ export default function Appointments() {
                                     </p>
                                 </div>
 
-                                {/* Vet + clinic */}
                                 <div className="flex-1 min-w-0 space-y-0.5">
                                     <p className="flex items-center gap-1.5 text-sm text-slate-600">
                                         <HeadphonesIcon />
@@ -407,7 +400,6 @@ export default function Appointments() {
                     })}
                 </div>
 
-                {/* ── PAGINATION ── */}
                 <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
                     <p className="text-sm text-slate-400">
                         {filtered.length === 0
@@ -452,7 +444,6 @@ export default function Appointments() {
                 </div>
             </div>
 
-            {/* ── MODALS ── */}
             <AddAppointmentForm
                 showToast={() => { setShowSuccess(true); setSuccessMessage("Programarea a fost salvată"); }}
                 open={showAddModal}

@@ -1,7 +1,7 @@
 import { type ReactNode, useContext } from "react";
 import {Link, useLocation, useNavigate} from "react-router-dom";
 import { AuthContext } from "../api/authContext";
-import { isAdmin, isVeterinarian } from "../api/roles";
+import {isAdmin, isPetOwner, isVeterinarian} from "../api/roles";
 import {
     BellIcon,
     BuildingIcon,
@@ -49,6 +49,10 @@ export default function AppLayout({ children }: Props) {
     if (auth?.user && isVeterinarian(auth.user.roles)) {
         navItems.push({ label: "Program", path: "/slots", icon: <ScheduleIcon /> },
             { label: "Utilizatori", path: "/users", icon: <UsersIcon /> });
+    }
+    if (auth?.user && isPetOwner(auth.user.roles)) {
+        navItems.push(
+            { label: "Personal medical", path: "/users", icon: <UsersIcon /> });
     }
 
     if (auth?.user && isAdmin(auth.user.roles)) {

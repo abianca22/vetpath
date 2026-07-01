@@ -35,7 +35,7 @@ const labelBase: React.CSSProperties = {
     marginBottom: 5,
 };
 
-/** Buton primar verde */
+/* Buton primar verde */
 export function PrimaryBtn({ children, onClick, type = "button", form }: { children: ReactNode, onClick?: () => void, type?: "button" | "submit" | "reset", form?: string}) {
     return (
         <button
@@ -61,7 +61,7 @@ export function PrimaryBtn({ children, onClick, type = "button", form }: { child
     );
 }
 
-/** Buton secundar outlined */
+/* Buton secundar outlined */
 export function SecondaryBtn({ children, onClick }: { children: ReactNode, onClick: () => void }) {
     return (
         <button
@@ -86,7 +86,7 @@ export function SecondaryBtn({ children, onClick }: { children: ReactNode, onCli
     );
 }
 
-/** Input text stilizat */
+/* Input text stilizat */
 export function VetInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     return (
         <input
@@ -98,7 +98,7 @@ export function VetInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     );
 }
 
-/** Select stilizat */
+/* Select stilizat */
 export function VetSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     return (
         <select
@@ -115,12 +115,12 @@ export function VetSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) 
     );
 }
 
-/** Label stilizat */
+/* Label stilizat */
 export function VetLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
     return <label htmlFor={htmlFor} style={labelBase}>{children}</label>;
 }
 
-/** Grup formular: label + input/select */
+/* Grup formular: label + input/select */
 export function Field({ label, children, htmlFor }: { label: string; children: ReactNode; htmlFor?: string }) {
     return (
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -130,7 +130,7 @@ export function Field({ label, children, htmlFor }: { label: string; children: R
     );
 }
 
-/** Mesaj eroare */
+/* Mesaj eroare */
 export function ErrorMsg({ error }: { error: string | null }) {
     if (!error) return null;
     return (
@@ -140,7 +140,7 @@ export function ErrorMsg({ error }: { error: string | null }) {
     );
 }
 
-/** Modal wrapper principal */
+/* Modal wrapper principal */
 export default function ModalShell({ open, onClose, title, children, footer, maxWidth = 520 }: ModalShellProps) {
     if (!open) return null;
 

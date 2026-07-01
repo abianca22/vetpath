@@ -113,28 +113,28 @@ export default function QuestionResponse() {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                        <div className="flex gap-2">
-                            {canGenerateRecord && (
-                                <button onClick={() => setShowCreateConfirm(true)}
-                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
-                                    Generare raport
-                                </button>
-                            )}
-                            {canViewRecord && (
-                                <button onClick={() => { sessionStorage.setItem("recordId", entry.medicalRecord.id.toString()); navigate("/records/details"); }}
-                                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition">
-                                    Vizualizare raport
+                        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                            <div className="flex gap-2">
+                                {canGenerateRecord && (
+                                    <button onClick={() => setShowCreateConfirm(true)}
+                                        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                                        Generare raport
+                                    </button>
+                                )}
+                                {canViewRecord && (
+                                    <button onClick={() => { sessionStorage.setItem("recordId", entry.medicalRecord.id.toString()); navigate("/records/details"); }}
+                                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 transition">
+                                        Vizualizare raport
+                                    </button>
+                                )}
+                            </div>
+                            {canDelete && (
+                                <button onClick={() => setShowDeleteConfirm(true)}
+                                    className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition">
+                                    Ștergere
                                 </button>
                             )}
                         </div>
-                        {canDelete && (
-                            <button onClick={() => setShowDeleteConfirm(true)}
-                                className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 transition">
-                                Ștergere
-                            </button>
-                        )}
-                    </div>
                 </div>
             )}
 

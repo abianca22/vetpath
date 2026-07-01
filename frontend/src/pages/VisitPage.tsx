@@ -33,6 +33,7 @@ export default function Visit() {
     const [clinics, setClinics] = useState([]);
     const [pets, setPets] = useState([]);
     const [questions, setQuestions] = useState([]);
+    const [isVet, setIsVet] = useState(false);
 
     const canSeePets = isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles);
     const canSeeQuestions = isAdmin(auth.user.roles) || isVeterinarian(auth.user.roles) || auth.user.username === username;
@@ -41,7 +42,10 @@ export default function Visit() {
         if (auth.user.username === username) { navigate("/profile"); return; }
 
         findUserByUsername(auth.token, username)
-            .then(setVisitedUser)
+            .then(user => {
+                setVisitedUser(user);
+                setIsVet(isVeterinarian(user.roles))
+            })
             .catch(() => navigate("/access-denied"));
 
         getClinicsByVeterinarian(username).then(setClinics).catch(() => {});
@@ -54,13 +58,12 @@ export default function Visit() {
         }
     }, [username]);
 
-    const isVet = isVeterinarian(visitedUser.roles);
 
     return (
         <div className="p-6" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-slate-900 m-0">Profil utilizator</h1>
-                <p className="text-slate-400 m-0 mt-1" style={{ fontSize: 14 }}>@{visitedUser.username}</p>
+                <p className="text-slate-400 m-0 mt-1" style={{ fontSize: 14 }}>@{visitedUser?.username}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-5" style={{ alignItems: "start" }}>
@@ -74,13 +77,13 @@ export default function Visit() {
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-slate-900" style={{ fontSize: 20 }}>
-                                    {visitedUser.firstName || visitedUser.lastName
-                                        ? `${visitedUser.firstName ?? ""} ${visitedUser.lastName ?? ""}`.trim()
-                                        : visitedUser.username}
+                                    {visitedUser?.firstName || visitedUser?.lastName
+                                        ? `${visitedUser?.firstName ?? ""} ${visitedUser?.lastName ?? ""}`.trim()
+                                        : visitedUser?.username}
                                 </span>
-                                <RoleBadge roles={visitedUser.roles} />
+                                {visitedUser && <RoleBadge roles={visitedUser?.roles} />}
                             </div>
-                            <p className="text-slate-400 m-0" style={{ fontSize: 13 }}>@{visitedUser.username}</p>
+                            <p className="text-slate-400 m-0" style={{ fontSize: 13 }}>@{visitedUser?.username}</p>
                             {isVet && clinics.length > 0 && (
                                 <div className="flex items-center gap-1 mt-0.5">
                                     <Building2 size={12} color="#94a3b8" />
@@ -97,27 +100,17 @@ export default function Visit() {
                     <div className="px-6 py-4 flex flex-col gap-3">
                         <div className="flex items-center gap-3">
                             <Mail size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
-                            <span className="text-slate-700" style={{ fontSize: 14 }}>{visitedUser.email || "—"}</span>
+                            <span className="text-slate-700" style={{ fontSize: 14 }}>{visitedUser?.email || "—"}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <Phone size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
-                            <span className="text-slate-700" style={{ fontSize: 14 }}>{visitedUser.phoneNumber || "—"}</span>
+                            <span className="text-slate-700" style={{ fontSize: 14 }}>{visitedUser?.phoneNumber || "—"}</span>
                         </div>
                     </div>
 
                     {isVet && (
                         <>
                             <div style={{ borderTop: "1px solid #f1f5f9", margin: "0 24px" }} />
-                            <div className="px-6 py-4">
-                                <button
-                                    onClick={() => navigate(`/slots/${visitedUser.username}`)}
-                                    className="flex items-center gap-2 rounded-xl cursor-pointer px-4 py-2 text-sm font-semibold transition-colors"
-                                    style={{ background: "transparent", color: "#1d9e75", border: "1.5px solid #a7f3d0" }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = "#f0fdf9"; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                                    📅 Vezi program
-                                </button>
-                            </div>
                         </>
                     )}
                 </div>

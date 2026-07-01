@@ -83,7 +83,7 @@ export default function AddAppointmentForm(props) {
             title="Adaugă o programare"
             footer={<>
                 <SecondaryBtn onClick={close}>Închide</SecondaryBtn>
-                <PrimaryBtn type="submit" form="add-appointment-form">Salvare</PrimaryBtn>
+                <PrimaryBtn type="submit" form="add-appointment-form">Salvează</PrimaryBtn>
             </>}
         >
             <form id="add-appointment-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>

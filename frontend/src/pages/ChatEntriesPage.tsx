@@ -95,11 +95,11 @@ export default function ChatEntries() {
                     className="flex-1 min-w-[160px] rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 />
                 <button type="submit" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
-                    Caută
+                    Căutare
                 </button>
                 <button type="button" onClick={() => { setSelectedPet(""); setLastKeyword(""); }}
                     className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
-                    Reset
+                    Resetare
                 </button>
             </form>
 

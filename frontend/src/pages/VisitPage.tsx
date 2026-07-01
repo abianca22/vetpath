@@ -54,8 +54,6 @@ export default function Visit() {
         }
     }, [username]);
 
-    if (!visitedUser) return null;
-
     const isVet = isVeterinarian(visitedUser.roles);
 
     return (
@@ -66,7 +64,7 @@ export default function Visit() {
             </div>
 
             <div className="grid grid-cols-2 gap-5" style={{ alignItems: "start" }}>
-
+                {/* detalii generale */}
                 <div className="rounded-2xl bg-white flex flex-col" style={{ border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                     <div className="flex items-center gap-4 p-6">
                         <div className="flex items-center justify-center rounded-full font-bold text-white flex-shrink-0"
@@ -124,6 +122,7 @@ export default function Visit() {
                     )}
                 </div>
 
+                {/* daca e admin sau veterinar */}
                 {canSeePets ? (
                     <div className="rounded-2xl bg-white flex flex-col max-h-full min-h-full" style={{ border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
                         <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -166,7 +165,7 @@ export default function Visit() {
                 ) : (
                     <></>
                 )}
-
+                {/* daca e admin sau veterinar */}
                 {canSeeQuestions && (
                     <div className="col-span-2 rounded-2xl bg-white flex flex-col"
                         style={{ border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>

@@ -84,11 +84,11 @@ export default function Clinics() {
                 />
                 <button type="submit"
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
-                    Caută
+                    Căutare
                 </button>
                 <button type="button" onClick={() => { setSearchQuery(""); setLastVetString(""); }}
                     className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
-                    Reset
+                    Resetare
                 </button>
             </form>
 

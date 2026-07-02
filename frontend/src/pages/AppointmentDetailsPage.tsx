@@ -6,7 +6,7 @@ import {
     confirmAppointment,
     findPetByOwnerAndName,
     getAppointment,
-    getRecordByAppointment,
+    getRecordByAppointment, sendEmail,
 } from "../api/api.ts";
 import { isAdmin, isVeterinarian } from "../api/roles.ts";
 import moment from "moment";
@@ -96,6 +96,19 @@ export default function AppointmentDetails() {
             }
         };
         load();
+        const loadPendingNotifications = async () => {
+            if (sessionStorage.getItem("sendEmailAppointmentId") !== null) {
+                try {
+                    await sendEmail(auth.token, sessionStorage.getItem("sendEmailAppointmentId"));
+                    sessionStorage.removeItem("sendEmailAppointmentId");
+                    console.log("Email trimis");
+                }
+                catch(err) {
+                    setError(err);
+                }
+            }
+        }
+        loadPendingNotifications();
     }, [closeCount]);
 
     if (!appointment) return (

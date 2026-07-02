@@ -65,6 +65,7 @@ export default function AddAppointmentForm(props) {
         try {
             const res = await addAppointment(auth.token, parseInt(selectedSlot), selectedPet);
             sessionStorage.setItem("sendEmailAppointmentId", res.id.toString());
+            console.log(sessionStorage.getItem("sendEmailAppointmentId"));
             setError(null);
             props.showToast?.();
             props.save();

@@ -9,7 +9,7 @@ import { isPetOwner, isVeterinarian } from "../../api/roles.ts";
 import SuccessToast from "../../components/SuccessToast.tsx";
 import ErrorToast from "../../components/ErrorToast.tsx";
 import { AuthContext } from "../../api/authContext.ts";
-import {getAllClinics, getAppointments, getAppointmentsByPet} from "../../api/api.ts";
+import {getAllClinics, getAppointments, getAppointmentsByPet, sendEmail} from "../../api/api.ts";
 import {
     ArrowUpDownIcon,
     BuildingSmallIcon,
@@ -108,6 +108,19 @@ export default function Appointments() {
         };
         findAppointments();
         findClinics();
+        const loadPendingNotifications = async () => {
+            if (sessionStorage.getItem("sendEmailAppointmentId") !== null) {
+                try {
+                    await sendEmail(auth.token, sessionStorage.getItem("sendEmailAppointmentId"));
+                    sessionStorage.removeItem("sendEmailAppointmentId");
+                    console.log("Email trimis");
+                }
+                catch(err) {
+                    setError(err);
+                }
+            }
+        }
+        loadPendingNotifications();
     }, [closeCount, cancelCloseCount]);
 
     async function handleFilterSubmit(e) {

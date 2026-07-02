@@ -236,7 +236,8 @@ export default function AppointmentDetails() {
                     </InfoRow>
 
                     <InfoRow label="Proprietar">
-                        @{appointment.currentOwner?.username ?? appointment.pet?.owner?.username ?? <em>Utilizator inactiv</em>}
+                        {(appointment.currentOwner !== null || (appointment.pet !== null && appointment.pet.owner !== null)) ? '@' : ''}
+                        {appointment.currentOwner?.username ?? appointment.pet?.owner?.username ?? <em>Utilizator inactiv</em>}
                     </InfoRow>
 
                     {appointment.done && hasRecord && (

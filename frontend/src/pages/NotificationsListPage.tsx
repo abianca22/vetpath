@@ -81,7 +81,7 @@ export default function NotificationsList() {
                             <BellIcon size={16} />
                         </div>
 
-\                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
                             <p className={`text-sm ${!notification.seen ? "font-medium text-slate-800" : "text-slate-600"}`}>
                                 {notification.content}
                             </p>

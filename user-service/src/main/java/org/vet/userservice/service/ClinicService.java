@@ -90,10 +90,10 @@ public class ClinicService {
         dbClinic.getVets().remove(dbUser);
         var appointments = appointmentService.getByVet(dbUser);
         for (var j = 0; j < appointments.size(); j++) {
-            if (appointments.get(j).getStatus().equals(AppointmentStatus.AVAILABLE)) {
+            if (appointments.get(j).getStatus().equals(AppointmentStatus.AVAILABLE) && appointments.get(j).getClinic() != null && appointments.get(j).getClinic().getId().equals(dbClinic.getId())) {
                 appointmentService.deleteSlot(appointments.get(j).getId());
             }
-            else if (appointments.get(j).getStatus().equals(AppointmentStatus.BOOKED) && appointments.get(j).getSlot().isAfter(LocalDateTime.now())){
+            else if (appointments.get(j).getStatus().equals(AppointmentStatus.BOOKED) && appointments.get(j).getSlot().isAfter(LocalDateTime.now()) && appointments.get(j).getClinic() != null && appointments.get(j).getClinic().getId().equals(dbClinic.getId())) {
                 appointments.get(j).setCancelReason(reason);
                 appointments.get(j).setCancelledBy(dbUser);
                 appointmentService.cancelAppointment(appointments.get(j), false);
